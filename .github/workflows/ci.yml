@@ -4,6 +4,16 @@ on:
   push:
     branches: [master]
   pull_request:
+  # Manual backfill: rebuild and attach the binaries for an existing tag, for
+  # when a binaries leg failed after the release was already cut. A re-run of
+  # the failed job would reuse the workflow file from the original commit, so
+  # a workflow fix can only reach an existing release through a new dispatch.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to attach binaries to
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -75,7 +85,10 @@ jobs:
 
   binaries:
     needs: release-please
-    if: needs.release-please.outputs.release_created == 'true'
+    # always() lets this run when release-please was skipped, which is the
+    # workflow_dispatch backfill case; the second clause still gates the
+    # ordinary path on a release actually having been created.
+    if: always() && (needs.release-please.outputs.release_created == 'true' || (github.event_name == 'workflow_dispatch' && inputs.tag != ''))
     strategy:
       fail-fast: false
       matrix:
@@ -94,7 +107,7 @@ jobs:
       # being cut and this job running, and the asset must match its tag.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
-          ref: ${{ needs.release-please.outputs.tag_name }}
+          ref: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
       - name: Install dependencies
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
@@ -102,26 +115,37 @@ jobs:
           else
             brew install pcre2 pkgconf
           fi
-      # Fully static on Linux so the tarball runs on machines without pcre2
-      # installed — a Raspberry Pi being the motivating case. This is a small
-      # program with no dlopen or NSS use, so static glibc is safe here.
+      # Portable binaries link pcre2 from its static archives on both
+      # platforms. pkg-config discovery is disabled by pointing PKG_CONFIG at
+      # false, dropping CMake into the manual fallback that accepts explicit
+      # library paths — pkg-config's IMPORTED_TARGET resolves the full .so
+      # path, which "-static" cannot substitute ("attempted static link of
+      # dynamic object" was the failure mode).
       #
-      # macOS cannot link statically against the system, so pcre2 alone is
-      # linked from its .a files instead: pkg-config discovery is disabled by
-      # pointing PKG_CONFIG at false, which drops CMake into the manual
-      # fallback that accepts explicit library paths. The result depends only
-      # on libSystem/libc++ and runs on any arm64 Mac.
+      # Linux additionally links everything else statically, glibc included,
+      # so the tarball runs on machines with nothing installed — a Raspberry
+      # Pi being the motivating case; this is a small program with no dlopen
+      # or NSS use, so static glibc is safe. macOS cannot link the system
+      # statically, so its binary depends on libSystem/libc++ only.
       - name: Build a portable binary
         run: |
           if [ "$RUNNER_OS" = "Linux" ]; then
-            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXE_LINKER_FLAGS=-static
+            A=$(find /usr/lib -name libpcre2-posix.a | head -1)
+            B=$(find /usr/lib -name libpcre2-8.a | head -1)
+            EXTRA=-DCMAKE_EXE_LINKER_FLAGS=-static
+            INC=/usr/include
           else
             P=$(brew --prefix pcre2)
-            PKG_CONFIG=/usr/bin/false cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
-              -DPCRE2_INCLUDE_DIR="$P/include" \
-              -DPCRE2_POSIX_LIBRARY="$P/lib/libpcre2-posix.a" \
-              -DPCRE2_LIBRARY="$P/lib/libpcre2-8.a"
+            A=$P/lib/libpcre2-posix.a
+            B=$P/lib/libpcre2-8.a
+            EXTRA=
+            INC=$P/include
           fi
+          test -f "$A" && test -f "$B"
+          PKG_CONFIG=/usr/bin/false cmake -S . -B build -DCMAKE_BUILD_TYPE=Release $EXTRA \
+            -DPCRE2_INCLUDE_DIR="$INC" \
+            -DPCRE2_POSIX_LIBRARY="$A" \
+            -DPCRE2_LIBRARY="$B"
           cmake --build build
       - name: Fixture suite against the release binary
         run: test/run.sh build/src/pplatex
@@ -129,7 +153,7 @@ jobs:
       # keeps the argv[0] engine dispatch without shipping three copies.
       - name: Package
         env:
-          TAG: ${{ needs.release-please.outputs.tag_name }}
+          TAG: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
           TARGET: ${{ matrix.target }}
         run: |
           cmake --install build --prefix stage
@@ -139,6 +163,6 @@ jobs:
       - name: Attach to the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAG: ${{ needs.release-please.outputs.tag_name }}
+          TAG: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
           TARGET: ${{ matrix.target }}
         run: gh release upload --clobber "$TAG" "pplatex-$TAG-$TARGET.tar.gz"
