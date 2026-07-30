@@ -11,11 +11,11 @@
 *.la
 *.a
 
-# SCons files
-*.pyc
-.sconsign.dblite
-
 # Build directories
+build
 bin
 tmp
 dist
+
+# LaTeX droppings from running the test fixtures
+texput.log
