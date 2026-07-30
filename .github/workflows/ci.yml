@@ -166,3 +166,41 @@ jobs:
           TAG: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
           TARGET: ${{ matrix.target }}
         run: gh release upload --clobber "$TAG" "pplatex-$TAG-$TARGET.tar.gz"
+
+  bump-tap:
+    # Keep dpezto/homebrew-pplatex pointing at the latest release without a
+    # manual bump. Gated on the binaries matrix, so the formula never
+    # advertises a release whose build matrix failed. The push uses a
+    # write-scoped deploy key (TAP_DEPLOY_KEY secret): GITHUB_TOKEN is scoped
+    # to this repository and cannot push to the tap.
+    needs: [release-please, binaries]
+    if: always() && needs.binaries.result == 'success' && (needs.release-please.outputs.release_created == 'true' || (github.event_name == 'workflow_dispatch' && inputs.tag != ''))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compute the source tarball checksum
+        env:
+          TAG: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
+        run: |
+          curl -sfL "https://github.com/dpezto/pplatex/archive/refs/tags/$TAG.tar.gz" -o src.tar.gz
+          echo "SHA=$(sha256sum src.tar.gz | cut -d' ' -f1)" >> "$GITHUB_ENV"
+      - name: Update the formula in the tap
+        env:
+          TAG: ${{ needs.release-please.outputs.tag_name || inputs.tag }}
+          DEPLOY_KEY: ${{ secrets.TAP_DEPLOY_KEY }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$DEPLOY_KEY" > ~/.ssh/tap_key
+          chmod 600 ~/.ssh/tap_key
+          export GIT_SSH_COMMAND="ssh -i ~/.ssh/tap_key -o StrictHostKeyChecking=accept-new"
+          git clone --depth 1 git@github.com:dpezto/homebrew-pplatex.git tap
+          cd tap
+          sed -i -E "s|^(  url \").*(\")$|\1https://github.com/dpezto/pplatex/archive/refs/tags/$TAG.tar.gz\2|" Formula/pplatex.rb
+          sed -i -E "s|^(  sha256 \").*(\")$|\1$SHA\2|" Formula/pplatex.rb
+          if git diff --quiet; then
+            echo "formula already current for $TAG"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "pplatex ${TAG#v}"
+          git push
