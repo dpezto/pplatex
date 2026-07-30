@@ -33,8 +33,10 @@
 #       and set -DPCRE_STATIC accordingly.
 #
 
-# Minimum requirement is probably much lower, but lets say 3.0 for now.
-cmake_minimum_required(VERSION 3.0)
+# CMake 4.0 removed compatibility with projects requiring < 3.5, so the old
+# 3.0 floor made this project unconfigurable. 3.20 is a conservative modern
+# baseline: it ships in Debian 12, Ubuntu 22.04 and RHEL 9.
+cmake_minimum_required(VERSION 3.20)
 
 # Main project name
 project(pplatex)
