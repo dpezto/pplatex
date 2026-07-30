@@ -625,9 +625,13 @@ bool LatexOutputFilter::detectBadBoxLineNumber(string & strLine, short & dwCooki
 
 	static Regex reBadBoxLines("(.*) at lines ([0-9]+)--([0-9]+)", true);
 	static Regex reBadBoxLine("(.*) at line ([0-9]+)", true);
-	//Use the following only, if you know how to get the source line for it.
-	// This is not simple, as TeX is not reporting it.
-	static Regex reBadBoxOutput("(.*)has occurred while \\\\output is active^", true);
+	// A badbox reported as "has occurred while \output is active" carries no
+	// source line, because TeX does not report one. A pattern for it used to
+	// live here, anchored as "...is active^", which could never match. The
+	// bail-out below already assigns line 0 to these, so nothing was lost.
+	// Reinstating the pattern is not worth it: its branch also read capture
+	// groups from reBadBoxLines, which returns stale offsets from an earlier
+	// match when reBadBoxLines itself did not match.
 
 	string match = strLine;
 
@@ -644,12 +648,6 @@ bool LatexOutputFilter::detectBadBoxLineNumber(string & strLine, short & dwCooki
 		strLine = reBadBoxLine.getMatch(match,1);
 		m_currentItem.setSourceLine(parseInt(reBadBoxLine.getMatch(match,2)));
 		//KILE_DEBUG() << "\tBadBox@" << reBadBoxLine.getMatch(strLine,2) << "." << endl;
-		return true;
-	}
-	else if(reBadBoxOutput.match(strLine)) {
-		dwCookie = Start;
-		strLine = reBadBoxLines.getMatch(match,1);
-		m_currentItem.setSourceLine(0);
 		return true;
 	}
 	//bailing out, did not find a line number
