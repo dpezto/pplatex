@@ -1,6 +1,5 @@
 
 add_executable(pplatex main.cpp regex.cpp outputinfo.cpp
-	               outputfilter.cpp
 	               latexoutputfilter.cpp)
 
 # main.cpp stringifies these for --version

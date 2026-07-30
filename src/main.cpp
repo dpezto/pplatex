@@ -395,7 +395,7 @@ int main(int argc, char** argv) {
 	}
     }
 
-    LatexOutputFilter of(parser.getSourcefile(), parser.getLogfile(), parser.isVerbose(), parser.noBadBoxes() || parser.isQuiet(), parser.isQuiet());
+    LatexOutputFilter of(parser.getSourcefile(), parser.isVerbose(), parser.noBadBoxes() || parser.isQuiet(), parser.isQuiet());
 
     of.run(fp);
 

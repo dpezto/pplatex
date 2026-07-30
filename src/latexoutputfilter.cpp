@@ -58,7 +58,12 @@ static int parseInt(const string& str)
     return i;
 }
 
-static string trim(const string& str) {
+/**
+ * Strip whitespace from both ends of a line. Trailing spaces are only removed
+ * when trimSpaces is set: the raw log lines keep theirs, because needsSpace()
+ * infers latex's line wrapping from the untrimmed line length.
+ */
+static string trim(const string& str, bool trimSpaces = true) {
 
     size_t start = str.find_first_not_of(" \t\n\r");
 
@@ -66,7 +71,7 @@ static string trim(const string& str) {
         return "";
     }
 
-    size_t end   = str.find_last_not_of(" \t\n\r");
+    size_t end   = str.find_last_not_of(trimSpaces ? " \t\n\r" : "\t\n\r");
 
     return str.substr( start, end-start+1 );
 }
@@ -86,14 +91,23 @@ static bool endsWith(const string &str, char c) {
 
 ////// Class Code //////
 
-LatexOutputFilter::LatexOutputFilter(const string& source, const string& logfile, int verbose, bool nobadboxes, bool quiet) :
-    OutputFilter(source, logfile, verbose),
+LatexOutputFilter::LatexOutputFilter(const string& source, int verbose, bool nobadboxes, bool quiet) :
+    m_nOutputLines(0),
+    m_source(source),
+    m_verbose(verbose),
     m_nErrors(0),
     m_nWarnings(0),
     m_nBadBoxes(0),
     m_nobadboxes(nobadboxes),
     m_quiet(quiet)
 {
+    // TODO maybe use better method to handle also escaped chars in filename
+    size_t pos = source.find_last_of("/\\");
+    if ( pos == string::npos ) {
+	m_srcPath = ".";
+    } else {
+	m_srcPath = source.substr(0,pos);
+    }
 }
 
 LatexOutputFilter::~ LatexOutputFilter()
@@ -696,7 +710,40 @@ bool LatexOutputFilter::run(FILE *out)
 	}
 	m_stackFile.push(LOFStackItem(source()));
 
-	bool ret = OutputFilter::run(out);
+	m_nOutputLines = 0;
+
+	short sCookie = 0;
+	string s = "";
+
+	char line[120];
+	line[119] = line[118] = 0;
+
+	while ( fgets(line, sizeof(line), out) ) {
+
+	    s += line;
+
+	    if ( line[118] != 0 && line[118] != '\n' ) {
+		// line is too long, continue reading
+		line[118] = 0;
+		continue;
+	    }
+
+	    if ( m_verbose ) {
+		cerr << s;
+	    }
+
+	    sCookie = parseLine(trim(s, false), sCookie);
+	    ++m_nOutputLines;
+
+	    s.clear();
+	}
+
+	bool ret = true;
+
+	if ( ferror(out) ) {
+	    perror("Parsing stdout");
+	    ret = false;
+	}
 
 	if ( m_currentItem.isValid() ) {
 	    flushCurrentItem();
