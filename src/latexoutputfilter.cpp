@@ -347,7 +347,14 @@ void LatexOutputFilter::flushCurrentItem()
     }
     */
 
-    string sourceFile = (m_stackFile.empty()) ? source() : m_stackFile.top().file();
+    string sourceFile;
+    if ( !m_fileLineSource.empty() ) {
+	// file:line:error named the file; trust it over the paren heuristic
+	sourceFile = m_fileLineSource;
+	m_fileLineSource.clear();
+    } else {
+	sourceFile = (m_stackFile.empty()) ? source() : m_stackFile.top().file();
+    }
     m_currentItem.setSource(sourceFile);
 
     switch (nItemType) {
@@ -458,6 +465,37 @@ bool LatexOutputFilter::detectError(const string & strLine, short &dwCookie)
 	}
 
 	return found;
+}
+
+/**
+ * Errors in "file:line:error" style, produced by -file-line-error and emitted
+ * unconditionally by Tectonic. The format states the file and the line outright,
+ * so this bypasses both the parenthesis heuristic that tracks the current file
+ * and the scan for a following "l.<n>" context line.
+ */
+bool LatexOutputFilter::detectFileLineError(const string & strLine, short & dwCookie)
+{
+	// The file part is greedy so that a drive letter or any other colon in
+	// the path stays with the filename; only the last ":<digits>: " counts.
+	static Regex reFileLineError("^(.+):([0-9]+): (.+)$");
+
+	if(!reFileLineError.match(strLine)) {
+		return false;
+	}
+
+	m_fileLineSource = reFileLineError.getMatch(strLine, 1);
+
+	m_currentItem.setType(LatexOutputInfo::itmError);
+	m_currentItem.setOutputLine(GetCurrentOutputLine());
+	m_currentItem.setSourceLine(parseInt(reFileLineError.getMatch(strLine, 2)));
+	m_currentItem.setMessage(reFileLineError.getMatch(strLine, 3));
+
+	// Everything needed is on this one line, so emit it rather than waiting
+	// for a line number that this format never prints.
+	dwCookie = Start;
+	flushCurrentItem();
+
+	return true;
 }
 
 bool LatexOutputFilter::detectWarning(const string & strLine, short &dwCookie)
@@ -670,7 +708,8 @@ short LatexOutputFilter::parseLine(const string & strLine, short dwCookie)
 
 	switch (dwCookie) {
 		case Start :
-			if(!(detectBadBox(strLine, dwCookie) || detectWarning(strLine, dwCookie) || detectError(strLine, dwCookie))) {
+			if(!(detectBadBox(strLine, dwCookie) || detectWarning(strLine, dwCookie)
+			  || detectError(strLine, dwCookie) || detectFileLineError(strLine, dwCookie))) {
 				updateFileStack(strLine, dwCookie);
 			}
 		break;
@@ -704,6 +743,7 @@ short LatexOutputFilter::parseLine(const string & strLine, short dwCookie)
 bool LatexOutputFilter::run(FILE *out)
 {
 	m_nErrors = m_nWarnings = m_nBadBoxes = 0;
+	m_fileLineSource.clear();
 	m_nLastLineLength = 0;
 	while (!m_stackFile.empty()) {
 	    m_stackFile.pop();

@@ -1,1 +1,3 @@
-Result: o) Errors: 0, Warnings: 0, BadBoxes: 0
+** Error   in ./min.tex, Line 3: Undefined control sequence.
+
+Result: o) Errors: 1, Warnings: 0, BadBoxes: 0
