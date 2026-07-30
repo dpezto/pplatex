@@ -34,32 +34,76 @@ very long directory names with spaces or special characters *might* cause issues
 
 In contrast to [rubber](https://launchpad.net/rubber), pplatex does *not* run your latex tools multiple times 
 when references change or compile your images or the like. This remains the task
-of you / your makefile. The git repository however does contain SCons extensions
-to compile LaTeX documents, images and lots of other stuff using SCons (see the 
-`SConstruct` file for an example).
+of you / your makefile.
 
 
-Download
-========
+Install
+=======
 
-Source packages and precompiled binaries can be found on this project's releases page on Github.
+Homebrew (macOS and Linux)
+--------------------------
 
-  https://github.com/stefanhepp/pplatex/releases
+    brew install dpezto/pplatex/pplatex
 
-For the Windows binaries to work, you will need to download and install the [Visual C++ Redistributable for Visual Studio 2015 (x86)](https://www.microsoft.com/en-us/download/details.aspx?id=48145) if you do not have it already.
+This installs `pplatex` along with the `ppdflatex` and `ppluatex` aliases.
+
+From source
+-----------
+
+You need CMake >= 3.20, a C++ compiler, pkg-config and PCRE2. On Debian and
+Ubuntu:
+
+    sudo apt-get install cmake pkg-config libpcre2-dev
+
+On macOS with Homebrew:
+
+    brew install cmake pkgconf pcre2
+
+Then build and install:
+
+    cmake -S . -B build
+    cmake --build build
+    sudo cmake --install build
+
+`CMAKE_INSTALL_PREFIX` and `DESTDIR` work as usual, so to install somewhere
+else without root:
+
+    cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$HOME/.local
+    cmake --build build
+    cmake --install build
+
+The install step places `pplatex` in `bin/` and adds `ppdflatex` and `ppluatex`
+next to it as symlinks. All three are the same program: it picks the LaTeX
+engine from the name it was invoked as.
+
+Without pkg-config, point CMake at PCRE2 by hand with `PCRE2_INCLUDE_DIR`,
+`PCRE2_POSIX_LIBRARY` and `PCRE2_LIBRARY`. When linking against a PCRE2 DLL on
+Windows rather than a static library, also pass `-DPCRE2_SHARED=ON`.
+
+
+Editor integration
+==================
+
+[VimTeX](https://github.com/lervag/vimtex) can use pplatex to populate its
+quickfix list. Once `pplatex` is on your PATH:
+
+    let g:vimtex_quickfix_method = 'pplatex'
+
+LazyVim enables this automatically when it finds `pplatex` on the PATH.
+
 
 Quick Start
 ===========
 
 In your latex project directory, just run
 
-    path/to/ppdflatex myfile.tex
+    ppdflatex myfile.tex
 
 Use pplatex instead to run latex instead of pdflatex.
 
-If your latex tools are not in your PATH, use 
+If your latex tools are not in your PATH, use
 
-    path/to/pplatex -c path/to/pdflatex -- myfile.tex
+    pplatex -c path/to/pdflatex -- myfile.tex
 
 You can also use pplatex to parse an existing log file ...
 
@@ -71,98 +115,6 @@ You can also use pplatex to parse an existing log file ...
 ... or to filter the output of pdflatex/xelatex/lualatex:
 
     pdflatex myfile.tex | pplatex -i
-
-Building
-========
-
-Requirements
-------------
-
-You will need a copy of PCRE (not PCRE2). Any version >= 7.0 should work fine.
-
-  http://www.pcre.org/
-
-On Ubuntu/Debian, you can get it with
-
-    sudo apt-get install libpcre3-dev
-
-On Windows, either download the source package and build it with cmake, or
-download and unpack a precompiled binary package.
-
-You can build either with SCons or CMake.
-
-- SCons (>= 1.2.0)
-  http://www.scons.org/
-- CMake (>= 3.20)
-  http://www.cmake.org/
-
-
-Building with SCons
--------------------
-
-In order for the SCons build to work, you need to have LaTeX installed in your
-PATH or set LATEX\_PATH to your LaTeX installation path.
-
-If the pcre headers are not in a standard path (or if you are on Windows), 
-create a './config.py' or './config-windows.py' (p.e. by copying if from 
-./build/), and set PCREPATH to your PCRE installation path. 
-
-If you are linking against a *static* version of PCRE on Windows (e.g., when you
-did compile it yourself), then you need to uncomment the following line in
-`SConstruct` (I have not tested this yet though!):
-
-    env.Append( CPPDEFINES=['PCRE_STATIC'] )
-
-To compile a release version of pplatex, simply use
-
-    scons
-
-For a debug version, use
-
-    scons RELEASE=debug
-
-
-Building with CMake
--------------------
-
-If you are linking against a *dynamic* version of PCRE on Windows (e.g., when
-you downloaded a precompiled package), comment out or remove this line in 
-`src/CMakeLists.txt`
-
-    add_definitions(-DPCRE_STATIC)
-
-Create a build directory, ideally outside of your source checkout. Run either
-`cmake` or `cmake-gui` inside the build directory and pass the source directory
-as option the first time you run it.
-
-    # Assuming your source directory is called 'pplatex'
-    cd ..
-    mkdir build
-    cd build
-    cmake-gui ../pplatex
-
-On Linux, cmake without any further configuration should work fine. On Windows,
-ensure that `CMAKE_BUILD_TYPE` is the same as your PCRE library was compiled
-with (if you link statically), set `PCRE_INCLUDE_DIR` to the directory
-containing `pcreposix.h`, and set `PCRE_PCRE_LIBRARY` and
-`PCRE_PCREPOSIX_LIBRARY` to the full filename of `pcre.lib` and `pcreposix.lib`,
-respectively. Run `Configure` and `Generate` and select nmake or Makefiles as
-build type.
-
-Run `make` (on Linux) or `nmake` on Windows in the build dir. This should
-generate `pplatex.exe`. You can then copy or rename it to `ppdflatex.exe` or
-`ppluatex.exe` and copy it to your install directory. Do not forget to copy
-pcre.dll and pcreposix.dll into the same directory if you linked dynamically.
-
-
-Installation
-============
-
-Place the files from the './bin' directory into any directory you like. Make
-sure that that directory is in your PATH variable, or start the tools using the
-installation path like
-
-    /path/to/pplatex/ppdflatex <options>
 
 
 Usage
@@ -195,20 +147,15 @@ Make sure you do not use an interaction mode where latex waits for user input on
 errors. pplatex uses -interaction=nonstopmode by default if no interaction mode is 
 specified.
 
-The binaries are actually the same, pplatex detects the tool to run based on 
-its filename. You can also call it ppluatex to run lualatex. Note that at the
-moment, pplatex will default to lualatex if it is renamed to anything else. This
-might change in the future.
-
-On Linux, ppluatex is a script that calls pplatex. It allows configuration of
-the location of pplatex and latex/pdflatex in `~/.ppluatex.conf`. Obviously, you
-can also rename and use that script for pdflatex.
+All three binaries are the same program; pplatex picks the engine from the name
+it was invoked as. `pplatex` runs latex, `ppdflatex` runs pdflatex and
+`ppluatex` runs lualatex. Any other name is rejected, so use `--cmd` to run an
+engine that has no dedicated name.
 
 
 Open Tasks
 ==========
 
 - [ ] Support warnings and error messages of PGF / TikZ
-- [ ] Add option to SCons and CMake to choose whether to link PCRE statically or dynamically.
 - [ ] Check for bugfixes in updates in Kile's parser and integrate them. Submit bugfixes in pplatex to Kile.
 

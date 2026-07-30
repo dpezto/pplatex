@@ -17,5 +17,6 @@ bin
 tmp
 dist
 
-# LaTeX droppings from running the test fixtures
-texput.log
+# LaTeX droppings: running pplatex in wrapper mode from the repo root makes
+# the engine write its log here. The real fixtures all live in test/.
+/*.log
