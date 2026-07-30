@@ -48,11 +48,20 @@ bool LatexOutputInfo::isValid() const
 				  && m_strError.empty() && m_nErrorID == -1);
 }
 
-void LatexOutputInfo::addMessage(const string& msg, bool addSpace) 
+void LatexOutputInfo::addMessage(const string& msg, bool addSpace)
 {
-    if (msg.empty() || 
-	msg == "Type  H <return>  for immediate help." ||
-	msg == "...") 
+    // Lines reach us with their trailing spaces intact, because the length of
+    // an untrimmed line is what tells the filter whether latex wrapped a word.
+    // Compare without them, or filler padded out to the width of the log slips
+    // through: "Type  H <return>..." carries none and was dropped, while the
+    // "..." continuation marker carries dozens and was not.
+    string text = msg;
+    size_t end = text.find_last_not_of(" \t");
+    text = (end == string::npos) ? "" : text.substr(0, end+1);
+
+    if (text.empty() ||
+	text == "Type  H <return>  for immediate help." ||
+	text == "...")
     {
 	return;
     }
