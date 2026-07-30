@@ -1,5 +1,5 @@
 ** Warning: No file test.aux.
 
-** Error  , Line 10: Missing $ inserted <inserted text>  $ 
+** Error  , Line 10: Missing $ inserted <inserted text>  $
 
 Result: o) Errors: 1, Warnings: 1, BadBoxes: 0

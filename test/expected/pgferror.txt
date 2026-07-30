@@ -15,7 +15,6 @@
    (Package pgfkeys) I do not know the key '/tikz/important line' and I am 
    going to ignore it. Perhaps you misspelled it.
    See the pgfkeys package documentation for explanation.
-   ...                                              
    \end{frame}
 
 ** BadBox  in /home/stefan/Documents/Uni/Vorlesungen/TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex, Line 195: 
@@ -24,7 +23,6 @@
 ** Error   in /home/stefan/Documents/Uni/Vorlesungen/TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/presentation.aux, Line 195: 
    (Package pgfkeys) I do not know the key going to ignore it. Perhaps you misspelled it.
    See the pgfkeys package documentation for explanation.
-   ...                                              
    \end{frame}
 
 Result: o) Errors: 2, Warnings: 4, BadBoxes: 1
