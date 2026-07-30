@@ -1,14 +1,8 @@
 class Pplatex < Formula
   desc "Prettify latex/pdflatex output into readable errors and warnings"
   homepage "https://github.com/stefanhepp/pplatex"
-  # Tag a release, then add its tarball here to make this a stable formula.
-  # These two lines belong above `license`, or `brew audit --strict` objects to
-  # the ordering, and the version is scanned from the URL rather than declared:
-  #
-  #   url "https://github.com/dpezto/pplatex/archive/refs/tags/v1.0.tar.gz"
-  #   sha256 "..."
-  #
-  # Until then `brew install --HEAD` is the supported path.
+  url "https://github.com/dpezto/pplatex/archive/refs/tags/v1.1.0.tar.gz"
+  sha256 "4436bed444d3e0d9d9b568a666c1ab2737b12c81867ee300a6fc025d20acb33f"
   license "GPL-3.0-or-later"
   head "https://github.com/dpezto/pplatex.git", branch: "master"
 
