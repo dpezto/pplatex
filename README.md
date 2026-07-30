@@ -1,16 +1,16 @@
-General Info
-============
+# pplatex
 
-This is a maintained fork of [stefanhepp/pplatex](https://github.com/stefanhepp/pplatex).
-The modernization and parser fixes were developed with LLM assistance, verified
-against the test suite in `test/`, and have all been offered upstream.
+[![CI](https://github.com/dpezto/pplatex/actions/workflows/ci.yml/badge.svg)](https://github.com/dpezto/pplatex/actions/workflows/ci.yml)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](gpl-3.0.txt)
 
-LaTeX is able to produce really nice document layouts. But it is also able to
-produce a lot of noise on the command line.  `pplatex` is a command-line tool
-that parses the logs of latex and pdflatex and prints warnings and errors in an
-human readable format.
+Make LaTeX's log output **readable** — errors and warnings with the file and
+line they belong to, and nothing else.
 
-`pplatex` will transform something like this
+LaTeX can produce beautiful documents, and it produces some of the noisiest
+command-line output in computing while doing it. `pplatex` parses the log
+stream of latex, pdflatex or lualatex and reduces it to the messages you
+actually act on. It turns this
+
 ```
 ]
 \openout2 = `chapter.aux'.
@@ -20,7 +20,9 @@ No file chapter.tex.
 ! Undefined control sequence.
 l.9 Something \unknown
 ```
+
 into this
+
 ```
 ** Warning in ./test.tex: No file chapter.tex.
 
@@ -30,136 +32,142 @@ into this
 Result: o) Errors: 1, Warnings: 1, BadBoxes: 0
 ```
 
-The code is based on the LaTeX output parser of [Kile](http://kile.sourceforge.net/) (also used by TexMakerX),
-with some modifications and bugfixes. Be aware that since the log output of the
-LaTeX tools is not well defined (in any sense of the word), parsing is done by
-a heuristic that tries its best but still might fail in some cases (e.g., having
-very long directory names with spaces or special characters *might* cause issues).
+This is a maintained fork of
+[stefanhepp/pplatex](https://github.com/stefanhepp/pplatex). The
+modernization and parser fixes were developed with LLM assistance, verified
+against the test suite in `test/`, and have all been offered upstream.
 
-In contrast to [rubber](https://launchpad.net/rubber), pplatex does *not* run your latex tools multiple times 
-when references change or compile your images or the like. This remains the task
-of you / your makefile.
+## Features
 
+- **Errors, warnings and badboxes, attributed.** Each message is tagged with
+  the source file and line it came from. The file is tracked through the log's
+  parenthesis structure — a heuristic, because the log format guarantees
+  nothing, hardened against the cases that break it: filenames wrapped across
+  lines, directories with spaces, several files opened on one line, and page
+  markers glued to a name.
+- **`file:line:error` style supported.** Logs produced with
+  `-file-line-error` report errors as `./main.tex:3: ...`; these are parsed
+  directly, taking the file and line the log already states.
+- **Works with Tectonic.** Tectonic packs several file-opens per line and
+  writes bare filenames; the file tracking handles both.
+- **Wrapper or filter, your choice.** Run `ppdflatex main.tex` to compile and
+  prettify in one step (`-interaction=nonstopmode` is added for you), or keep
+  your build system and post-process the log: `pplatex -i main.log`, or pipe
+  with `pplatex -i -`.
+- **One binary, three names.** The LaTeX engine is chosen from the name the
+  program is invoked as: `pplatex` runs latex, `ppdflatex` runs pdflatex,
+  `ppluatex` runs lualatex. Any other engine via `--cmd`.
+- **Quiet modes and exit codes.** `-b` hides badboxes, `-q` hides warnings
+  too; the exit status reflects whether errors were found, so it composes in
+  scripts and Makefiles.
 
-Install
-=======
+`pplatex` does *not* rerun latex for you when references change; that remains
+your build system's job (latexmk, a Makefile, …). The parser is derived from
+[Kile](https://apps.kde.org/kile/)'s LaTeX output filter.
 
-Homebrew (macOS and Linux)
---------------------------
+## Install
 
-    brew install dpezto/pplatex/pplatex
+### Homebrew (macOS and Linux)
 
-This installs `pplatex` along with the `ppdflatex` and `ppluatex` aliases.
+```sh
+brew tap dpezto/pplatex
+brew install --HEAD dpezto/pplatex/pplatex
+```
 
-From source
------------
+### Prebuilt binaries
 
-You need CMake >= 3.20, a C++ compiler, pkg-config and PCRE2. On Debian and
-Ubuntu:
+Each [release](https://github.com/dpezto/pplatex/releases) ships portable
+tarballs for `linux-x86_64`, `linux-arm64` and `macos-arm64`. The Linux
+binaries are fully static, so they run on any distribution without installing
+anything — including a Raspberry Pi (64-bit OS). Unpack and put `bin/` on your
+`PATH`; the engine-alias symlinks are preserved by the tarball.
 
-    sudo apt-get install cmake pkg-config libpcre2-dev
+### From source
 
-On macOS with Homebrew:
+Requires CMake >= 3.20, a C++ compiler, pkg-config and PCRE2:
 
-    brew install cmake pkgconf pcre2
+```sh
+sudo apt-get install cmake pkg-config libpcre2-dev   # Debian/Ubuntu/Raspberry Pi OS
+brew install cmake pkgconf pcre2                     # macOS
+```
 
-Then build and install:
+```sh
+cmake -S . -B build
+cmake --build build
+sudo cmake --install build
+```
 
-    cmake -S . -B build
-    cmake --build build
-    sudo cmake --install build
+`CMAKE_INSTALL_PREFIX` and `DESTDIR` behave as usual; use
+`-DCMAKE_INSTALL_PREFIX=$HOME/.local` to install without root. Without
+pkg-config, point CMake at PCRE2 with `PCRE2_INCLUDE_DIR`,
+`PCRE2_POSIX_LIBRARY` and `PCRE2_LIBRARY`; when linking a PCRE2 DLL on
+Windows, add `-DPCRE2_SHARED=ON`.
 
-`CMAKE_INSTALL_PREFIX` and `DESTDIR` work as usual, so to install somewhere
-else without root:
-
-    cmake -S . -B build -DCMAKE_INSTALL_PREFIX=$HOME/.local
-    cmake --build build
-    cmake --install build
-
-The install step places `pplatex` in `bin/` and adds `ppdflatex` and `ppluatex`
-next to it as symlinks. All three are the same program: it picks the LaTeX
-engine from the name it was invoked as.
-
-Without pkg-config, point CMake at PCRE2 by hand with `PCRE2_INCLUDE_DIR`,
-`PCRE2_POSIX_LIBRARY` and `PCRE2_LIBRARY`. When linking against a PCRE2 DLL on
-Windows rather than a static library, also pass `-DPCRE2_SHARED=ON`.
-
-
-Editor integration
-==================
+## Editor integration
 
 [VimTeX](https://github.com/lervag/vimtex) can use pplatex to populate its
 quickfix list. Once `pplatex` is on your PATH:
 
-    let g:vimtex_quickfix_method = 'pplatex'
+```vim
+let g:vimtex_quickfix_method = 'pplatex'
+```
 
 LazyVim enables this automatically when it finds `pplatex` on the PATH.
 
+## Usage
 
-Quick Start
-===========
+Compile and prettify:
 
-In your latex project directory, just run
+```sh
+ppdflatex main.tex                       # pdflatex
+pplatex main.tex                         # latex
+pplatex -c path/to/engine -- main.tex    # any engine, e.g. not on PATH
+```
 
-    ppdflatex myfile.tex
+Parse an existing log, or filter a stream:
 
-Use pplatex instead to run latex instead of pdflatex.
+```sh
+pdflatex main.tex          # run your toolchain as usual
+pplatex -i main.log        # then prettify the log
 
-If your latex tools are not in your PATH, use
+pdflatex main.tex | pplatex -i
+```
 
-    pplatex -c path/to/pdflatex -- myfile.tex
+Options:
 
-You can also use pplatex to parse an existing log file ...
+```
+-c, --cmd <cmd>    Execute <cmd> to compile the tex file
+-i, --input <file> Parse logfile <file> instead of running latex ('-' for stdin)
+-b                 Do not show badbox messages
+-q                 Do not show warnings and badbox messages
+-v                 Be verbose
+-V, --version      Show version info
+-h, --help         Show this help
+```
 
-    # run pdflatex normally
-    pdflatex myfile.tex
-    # Process the logfile and print warnings and errors.
-    pplatex -i myfile.log
+Do not pass an `-interaction` mode that stops to wait for input; pplatex uses
+`-interaction=nonstopmode` by default when none is given.
 
-... or to filter the output of pdflatex/xelatex/lualatex:
+## Development
 
-    pdflatex myfile.tex | pplatex -i
+The parser is a heuristic over an unspecified format, so behavior is pinned by
+fixtures: `test/run.sh` feeds every log in `test/` through the binary and
+diffs against the expected output committed in `test/expected/`.
 
+```sh
+test/run.sh                 # check against expected output
+test/run.sh --update        # regenerate after an intended behavior change
+```
 
-Usage
-=====
+Regenerated expected files are part of the change: review that diff line by
+line, it *is* the behavior change.
 
-If the pdflatex and latex tools are in your PATH (try running 'latex' on your 
-commandline), you can simply use ppdflatex if you want to run pdflatex, and pplatex 
-for latex, like
+Commits follow [Conventional Commits](https://www.conventionalcommits.org);
+releases are cut by release-please from those messages, and CI attaches the
+portable binaries to each release.
 
-    pplatex myfile.tex
+## Credits and license
 
-or 
-
-    ppdflatex myfile.tex
-
-Warnings and badbox messages can be hidden like this
-
-    pplatex -q -- latexfile.tex
-
-In order to parse an existing log file, use
-
-    pplatex -i somefile.log
-
-To specify which latex program should be used (p.e. when latex is not in PATH), use the 
---cmd option, like
-
-    pplatex -c /path/to/latex.exe -- <latex options> myfile
-
-Make sure you do not use an interaction mode where latex waits for user input on 
-errors. pplatex uses -interaction=nonstopmode by default if no interaction mode is 
-specified.
-
-All three binaries are the same program; pplatex picks the engine from the name
-it was invoked as. `pplatex` runs latex, `ppdflatex` runs pdflatex and
-`ppluatex` runs lualatex. Any other name is rejected, so use `--cmd` to run an
-engine that has no dedicated name.
-
-
-Open Tasks
-==========
-
-- [ ] Support warnings and error messages of PGF / TikZ
-- [ ] Check for bugfixes in updates in Kile's parser and integrate them. Submit bugfixes in pplatex to Kile.
-
+Written by Stefan Hepp, with a parser taken from the Kile project by Jeroen
+Wijnhout, Thorsten Lück and Michel Ludwig; see `COPYRIGHT.txt`. Fork
+maintained by Dai López. GPL-3.0 — see `gpl-3.0.txt`.
