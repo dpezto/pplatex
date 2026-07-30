@@ -1,0 +1,144 @@
+name: ci
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - uses: reviewdog/action-actionlint@50842263c20a7c46bd0065b9e624d3c569db061e # v1
+
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+          - os: ubuntu-24.04-arm
+          - os: macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+      - name: Install dependencies
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update -q && sudo apt-get install -qy cmake pkg-config libpcre2-dev
+          else
+            brew install pcre2 pkgconf
+          fi
+      - name: Build
+        run: |
+          cmake -S . -B build
+          cmake --build build
+      - name: Fixture suite
+        run: test/run.sh build/src/pplatex
+      # The three entry points are one binary dispatching on argv[0]; a broken
+      # install rule or symlink would pass every fixture and still ship a
+      # ppluatex that does the wrong thing, so exercise the installed names.
+      - name: Install and check engine dispatch
+        run: |
+          cmake --install build --prefix "$PWD/stage"
+          for pair in pplatex:latex ppdflatex:pdflatex ppluatex:lualatex; do
+            bin=${pair%%:*} engine=${pair##*:}
+            out=$("./stage/bin/$bin" -v -- /nonexistent.tex 2>&1 || true)
+            echo "$out" | grep -q "Executing: $engine" || { echo "::error::$bin did not select $engine"; exit 1; }
+          done
+
+  release-please:
+    # A release PR is only opened or updated from a master where the tests are
+    # green on all three platforms, so a red master cannot become a release.
+    # Publishing runs in this same workflow run, gated on release_created: the
+    # tag is pushed by the default GITHUB_TOKEN, which cannot trigger another
+    # workflow, so an on:release workflow would never fire.
+    needs: [test]
+    if: github.ref == 'refs/heads/master' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
+        id: release
+        with:
+          config-file: .release-please-config.json
+          manifest-file: .release-please-manifest.json
+
+  binaries:
+    needs: release-please
+    if: needs.release-please.outputs.release_created == 'true'
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: linux-x86_64
+          - os: ubuntu-24.04-arm
+            target: linux-arm64
+          - os: macos-latest
+            target: macos-arm64
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    steps:
+      # Build the tag, not master: master can gain commits between the release
+      # being cut and this job running, and the asset must match its tag.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+      - name: Install dependencies
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            sudo apt-get update -q && sudo apt-get install -qy cmake pkg-config libpcre2-dev
+          else
+            brew install pcre2 pkgconf
+          fi
+      # Fully static on Linux so the tarball runs on machines without pcre2
+      # installed — a Raspberry Pi being the motivating case. This is a small
+      # program with no dlopen or NSS use, so static glibc is safe here.
+      #
+      # macOS cannot link statically against the system, so pcre2 alone is
+      # linked from its .a files instead: pkg-config discovery is disabled by
+      # pointing PKG_CONFIG at false, which drops CMake into the manual
+      # fallback that accepts explicit library paths. The result depends only
+      # on libSystem/libc++ and runs on any arm64 Mac.
+      - name: Build a portable binary
+        run: |
+          if [ "$RUNNER_OS" = "Linux" ]; then
+            cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXE_LINKER_FLAGS=-static
+          else
+            P=$(brew --prefix pcre2)
+            PKG_CONFIG=/usr/bin/false cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+              -DPCRE2_INCLUDE_DIR="$P/include" \
+              -DPCRE2_POSIX_LIBRARY="$P/lib/libpcre2-posix.a" \
+              -DPCRE2_LIBRARY="$P/lib/libpcre2-8.a"
+          fi
+          cmake --build build
+      - name: Fixture suite against the release binary
+        run: test/run.sh build/src/pplatex
+      # tar preserves the ppdflatex/ppluatex symlinks, so the unpacked bin/
+      # keeps the argv[0] engine dispatch without shipping three copies.
+      - name: Package
+        env:
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+          TARGET: ${{ matrix.target }}
+        run: |
+          cmake --install build --prefix stage
+          tar -czf "pplatex-$TAG-$TARGET.tar.gz" -C stage bin
+      # --clobber keeps a re-run of a single matrix leg from tripping over the
+      # asset it already uploaded.
+      - name: Attach to the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ needs.release-please.outputs.tag_name }}
+          TARGET: ${{ matrix.target }}
+        run: gh release upload --clobber "$TAG" "pplatex-$TAG-$TARGET.tar.gz"
