@@ -32,8 +32,6 @@ using namespace std;
 
 ////// Helper Functions //////
 
-#define KILE_DEBUG() cerr
-
 // Maximum length of a latex log line.
 #define MAX_LATEX_LINE_LENGTH  79
 
@@ -128,17 +126,6 @@ bool LatexOutputFilter::fileExists(const string & name)
     if ( file_exists(file + ".tex") ) {
 	return true;
     }
-
-    // try to determine the LaTeX source file
-    /*
-    QStringList extlist = m_extensions->latexDocuments().split(' ');
-    for(QStringList::Iterator it = extlist.begin(); it!=extlist.end(); ++it) {
-	    fi.setFile(path() + '/' + name + (*it));
-	    if(fi.exists() && !fi.isDir()) {
-		    return true;
-	    }
-    }
-    */
 
     return false;
 }
@@ -350,15 +337,15 @@ void LatexOutputFilter::flushCurrentItem()
     m_currentItem.setSource(sourceFile);
 
     switch (nItemType) {
-	case itmError:
+	case LatexOutputInfo::itmError:
 	    ++m_nErrors;
 	    break;
 
-	case itmWarning:
+	case LatexOutputInfo::itmWarning:
 	    ++m_nWarnings;
 	    break;
 
-	case itmBadBox:
+	case LatexOutputInfo::itmBadBox:
 	    ++m_nBadBoxes;
 	    break;
 
@@ -366,8 +353,8 @@ void LatexOutputFilter::flushCurrentItem()
     }
 
     // print message
-    if ( nItemType == itmError || (nItemType == itmWarning && !m_quiet) || 
-	(nItemType == itmBadBox && !m_nobadboxes) ) {
+    if ( nItemType == LatexOutputInfo::itmError || (nItemType == LatexOutputInfo::itmWarning && !m_quiet) || 
+	(nItemType == LatexOutputInfo::itmBadBox && !m_nobadboxes) ) {
 	cout << m_currentItem.getMessage();
     }
 
@@ -448,7 +435,7 @@ bool LatexOutputFilter::detectError(const string & strLine, short &dwCookie)
 	}
 
 	if(found) {
-		m_currentItem.setType(itmError);
+		m_currentItem.setType(LatexOutputInfo::itmError);
 		m_currentItem.setOutputLine(GetCurrentOutputLine());
 	}
 
@@ -525,7 +512,7 @@ bool LatexOutputFilter::detectWarning(const string & strLine, short &dwCookie)
 	}
 
 	if(found) {
-	    m_currentItem.setType(itmWarning);
+	    m_currentItem.setType(LatexOutputInfo::itmWarning);
 	    m_currentItem.setOutputLine(GetCurrentOutputLine());
 	}
 
@@ -608,7 +595,7 @@ bool LatexOutputFilter::detectBadBox(const string & strLine, short & dwCookie)
 	}
 
 	if(found) {
-	    m_currentItem.setType(itmBadBox);
+	    m_currentItem.setType(LatexOutputInfo::itmBadBox);
 	    m_currentItem.setOutputLine(GetCurrentOutputLine());
 	}
 
@@ -702,7 +689,7 @@ short LatexOutputFilter::parseLine(const string & strLine, short dwCookie)
 
 bool LatexOutputFilter::run(FILE *out)
 {
-	m_nErrors = m_nWarnings = m_nBadBoxes = m_nParens = 0;
+	m_nErrors = m_nWarnings = m_nBadBoxes = 0;
 	m_nLastLineLength = 0;
 	while (!m_stackFile.empty()) {
 	    m_stackFile.pop();

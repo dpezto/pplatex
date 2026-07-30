@@ -96,20 +96,6 @@ class LatexOutputFilter : public OutputFilter
 	 */
 	bool needsSpace();
 
-        // types
-    protected:
-        /**
-        These constants are describing, which item types is currently
-        parsed.
-        */
-        enum tagCookies
-        {
-            itmNone = 0,
-            itmError,
-            itmWarning,
-            itmBadBox
-        };
-
         // attributes
     private:
         /** number or errors detected */
@@ -120,8 +106,6 @@ class LatexOutputFilter : public OutputFilter
 
         /** number of bad boxes detected */
         int m_nBadBoxes;
-
-	int m_nParens;
 
 	/** Length of the previous line, to check if we need a space in the next line */
 	size_t m_nLastLineLength;

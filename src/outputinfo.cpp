@@ -26,22 +26,12 @@
 
 using namespace std;
 
-OutputInfo::OutputInfo()
+LatexOutputInfo::LatexOutputInfo()
 {
     clear();
 }
 
-OutputInfo::OutputInfo(const string& strSrcFile, int nSrcLine, int nOutputLine,
-                       const string& strError, int nErrorID) :
-    m_strSrcFile(strSrcFile),
-    m_nSrcLine(nSrcLine),
-    m_strError(strError),
-    m_nOutputLine(nOutputLine),
-    m_nErrorID(nErrorID)
-{
-}
-
-void OutputInfo::clear()
+void LatexOutputInfo::clear()
 {
     m_strSrcFile.clear();
     m_nSrcLine = -1;
@@ -52,33 +42,10 @@ void OutputInfo::clear()
     m_package.clear();
 }
 
-bool OutputInfo::operator==(const OutputInfo& info) const
-{
-    return (m_strSrcFile == info.m_strSrcFile
-	 && m_nSrcLine == info.m_nSrcLine
-	 && m_strError == info.m_strError
-	 && m_nOutputLine == info.m_nOutputLine
-	 && m_nErrorID == info.m_nErrorID
-	 && m_msgClass == info.m_msgClass
-	 && m_package == info.m_package);
-}
-
-bool OutputInfo::isValid() const
+bool LatexOutputInfo::isValid() const
 {
     return !(m_strSrcFile.empty() && m_nSrcLine == -1 && m_nOutputLine == -1
 				  && m_strError.empty() && m_nErrorID == -1);
-}
-
-
-LatexOutputInfo::LatexOutputInfo() : OutputInfo()
-{
-}
-
-
-LatexOutputInfo::LatexOutputInfo(const string& strSrcFile, int nSrcLine, int nOutputLine,
-                                 const string& strError, int nErrorID)
-: OutputInfo(strSrcFile, nSrcLine, nOutputLine, strError, nErrorID)
-{
 }
 
 void LatexOutputInfo::addMessage(const string& msg, bool addSpace) 
