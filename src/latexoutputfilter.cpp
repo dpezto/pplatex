@@ -22,6 +22,7 @@
 #include <sys/stat.h>
 
 #include <cstdlib>
+#include <cctype>
 #include <string>
 #include <sstream>
 #include <iostream>
@@ -82,6 +83,33 @@ static bool startsWith(const string &str, const string &match) {
 
 static bool startsWith(const string &str, char c) {
     return str.length() > 0 && str[0] == c;
+}
+
+/**
+ * Does this look like a filename TeX would have opened? Used when the file
+ * cannot be confirmed on disk, which is the normal case for class and package
+ * files that live in the distribution rather than next to the document.
+ */
+static bool looksLikeFileName(const string &str) {
+    size_t dot = str.find_last_of('.');
+
+    if ( dot == string::npos || dot == 0 || dot + 1 == str.length() ) {
+	return false;
+    }
+
+    // A short alphanumeric extension, so that prose such as "size option"
+    // is not mistaken for a file.
+    if ( str.length() - dot - 1 > 4 ) {
+	return false;
+    }
+
+    for (size_t i = dot + 1; i < str.length(); i++) {
+	if ( !isalnum((unsigned char)str[i]) ) {
+	    return false;
+	}
+    }
+
+    return true;
 }
 
 static bool endsWith(const string &str, char c) {
@@ -283,7 +311,14 @@ void LatexOutputFilter::updateFileStackHeuristic(const string &strLine, short & 
 			}
 
 			//FIXME: improve these heuristics
-			if((isLastChar && (i < 78)) || nextIsTerminator == ')' || nextIsTerminator == '\t' || fileExists(strPartialFileName)) {
+			// A '(' that never yields a pushed name is still popped by its
+			// matching ')', which drains the stack and eventually discards
+			// the real source file. Engines that pack several opens onto
+			// one line, such as Tectonic, hit this constantly; pdflatex
+			// mostly escapes it by wrapping at 79 columns, so its names
+			// land at the end of a line and take the isLastChar path.
+			if((isLastChar && (i < 78)) || nextIsTerminator == ')' || nextIsTerminator == '\t'
+			   || fileExists(strPartialFileName) || looksLikeFileName(strPartialFileName)) {
 				m_stackFile.push(LOFStackItem(strPartialFileName));
 				// KILE_DEBUG() << "\tpushed (i = " << i << " length = " << strLine.length() << "): " << strPartialFileName << endl;
 				expectFileName = false;
