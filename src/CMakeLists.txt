@@ -3,6 +3,11 @@ add_executable(pplatex main.cpp regex.cpp outputinfo.cpp
 	               outputfilter.cpp
 	               latexoutputfilter.cpp)
 
+# main.cpp stringifies these for --version
+target_compile_definitions(pplatex PRIVATE
+	RELEASE_NAME=${PROJECT_NAME}
+	RELEASE_VERSION=${PPLATEX_VERSION})
+
 target_include_directories(pplatex PRIVATE ${PCRE2_INCLUDE_DIRS})
 target_link_libraries(pplatex PRIVATE ${PCRE2_LINK_LIBRARIES})
 

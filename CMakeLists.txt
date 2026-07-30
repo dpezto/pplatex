@@ -29,8 +29,10 @@
 # baseline: it ships in Debian 12, Ubuntu 22.04 and RHEL 9.
 cmake_minimum_required(VERSION 3.20)
 
-# Main project name
-project(pplatex)
+# Main project name. PPLATEX_VERSION is the human-readable release string
+# reported by --version and may carry a suffix that project(VERSION) rejects.
+project(pplatex VERSION 1.0)
+set(PPLATEX_VERSION "1.0-rc4")
 
 # Find PCRE2 via its POSIX compatibility layer. pkg-config is the only
 # discovery mechanism PCRE2 ships, so fall back to a manual search for
