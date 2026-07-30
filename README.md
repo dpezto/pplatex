@@ -1,6 +1,10 @@
 General Info
 ============
 
+This is a maintained fork of [stefanhepp/pplatex](https://github.com/stefanhepp/pplatex).
+The modernization and parser fixes were developed with LLM assistance, verified
+against the test suite in `test/`, and have all been offered upstream.
+
 LaTeX is able to produce really nice document layouts. But it is also able to
 produce a lot of noise on the command line.  `pplatex` is a command-line tool
 that parses the logs of latex and pdflatex and prints warnings and errors in an
