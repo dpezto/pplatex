@@ -187,7 +187,7 @@ class ArgParser {
 		else if ( !quietopt && (arg == "-q" || arg == "--quiet" ) ) {
 		    quietopt = i;
 		}
-		else if ( !quietopt && (arg == "-b" || arg == "--nobadboxes" ) ) {
+		else if ( !bbopt && (arg == "-b" || arg == "--nobadboxes" ) ) {
 		    bbopt = i;
 		}
 	    }
@@ -352,9 +352,9 @@ int main(int argc, char** argv) {
 	if ( parser.isVerbose() ) {
 	    cout << "Parsing ";
 	    if ( parser.getLogfile() == "-" ) {
-		cout << "logfile " << parser.getLogfile() << endl;
-	    } else {
 		cout << "stdin" << endl;
+	    } else {
+		cout << "logfile " << parser.getLogfile() << endl;
 	    }
 	}
 
@@ -373,11 +373,11 @@ int main(int argc, char** argv) {
 
 	if ( !fp ) {
 	    perror("Error");
-	    cerr << "Unable to open "; 
+	    cerr << "Unable to open ";
 	    if ( parser.getLogfile() == "-" ) {
-		cout << "stdin" << endl;
+		cerr << "stdin" << endl;
 	    } else {
-		cout << "logfile " << parser.getLogfile() << endl;
+		cerr << "logfile " << parser.getLogfile() << endl;
 	    }
 	    return 1;
 	}
