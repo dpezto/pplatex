@@ -28,8 +28,12 @@ foreach (alias ppdflatex ppluatex)
     install(PROGRAMS $<TARGET_FILE:pplatex> DESTINATION ${CMAKE_INSTALL_BINDIR}
             RENAME ${alias}${CMAKE_EXECUTABLE_SUFFIX})
   else()
+    # \${CMAKE_INSTALL_PREFIX} is escaped so it expands at install time, not
+    # configure time: `cmake --install --prefix X` overrides the prefix after
+    # configuration, and a configure-time path would send the symlinks to the
+    # old prefix while the binary honors the new one.
     install(CODE "
-      set(_link \"\$ENV{DESTDIR}${CMAKE_INSTALL_FULL_BINDIR}/${alias}\")
+      set(_link \"\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_BINDIR}/${alias}\")
       file(REMOVE \"\${_link}\")
       file(CREATE_LINK pplatex \"\${_link}\" SYMBOLIC)
       message(STATUS \"Created symlink: \${_link} -> pplatex\")
