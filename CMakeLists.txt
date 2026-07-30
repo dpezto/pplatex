@@ -11,26 +11,17 @@
 #   cmake ../pplatex
 #   make
 #
-# Requirements on Linux are:
+# Requirements on Linux/macOS are:
 # - pkg-config
-# - libpcre3-dev
+# - libpcre2-dev (Debian/Ubuntu) or pcre2 (Homebrew)
 # Requirements on Windows are:
 # - MSVC Compiler (should work with Cygwin/MinGW as well)
-# - PCRE (statically linked)
+# - PCRE2
 #
-# You can compile PCRE on Windows using cmake from the source distribution file.
-# If you link with a dynamic PCRE library, remove the -DPCRE_STATIC definition in
-# src/CMakeLists.txt
-# 
-# To compile on Windows, create a build directory and run cmake-gui <this-repo-dir> 
-# in that build directory. Set PCRE_INCLUDE_DIR to the directory containing pcre.h, and
-# set PCRE_PCREPOSIX_LIBRARY and PCRE_PCRE_LIBRARY to the pcreposix.lib and pcre.lib
-# filename, respectively. Set the CMAKE_BUILD_TYPE to 'Release' (optional), and use the
-# nmake or make generator, then run nmake (or make) in the build directory, after generating
-# the build files.
-#
-# TODO: Adapt FindPCRE.cmake to choose static or dynamic linking via a CMake option
-#       and set -DPCRE_STATIC accordingly.
+# Without pkg-config, set PCRE2_INCLUDE_DIR to the directory containing
+# pcre2posix.h and set PCRE2_POSIX_LIBRARY and PCRE2_LIBRARY to the
+# pcre2-posix and pcre2-8 libraries respectively. When linking against a
+# PCRE2 DLL rather than a static library, also set PCRE2_SHARED=ON.
 #
 
 # CMake 4.0 removed compatibility with projects requiring < 3.5, so the old
@@ -41,11 +32,29 @@ cmake_minimum_required(VERSION 3.20)
 # Main project name
 project(pplatex)
 
-# Load module to find PCRE
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+# Find PCRE2 via its POSIX compatibility layer. pkg-config is the only
+# discovery mechanism PCRE2 ships, so fall back to a manual search for
+# platforms without it (typically Windows).
+find_package(PkgConfig QUIET)
+if (PkgConfig_FOUND)
+  pkg_check_modules(PCRE2 QUIET IMPORTED_TARGET libpcre2-posix)
+endif()
 
-# Find and configure PCRE library
-find_package(PCRE REQUIRED)
+if (PCRE2_FOUND)
+  set(PCRE2_LINK_LIBRARIES PkgConfig::PCRE2)
+else()
+  find_path(PCRE2_INCLUDE_DIR pcre2posix.h)
+  find_library(PCRE2_POSIX_LIBRARY NAMES pcre2-posix pcre2-posix-static)
+  find_library(PCRE2_LIBRARY NAMES pcre2-8 pcre2-8-static)
+
+  include(FindPackageHandleStandardArgs)
+  find_package_handle_standard_args(PCRE2 DEFAULT_MSG
+    PCRE2_INCLUDE_DIR PCRE2_POSIX_LIBRARY PCRE2_LIBRARY)
+
+  set(PCRE2_LINK_LIBRARIES ${PCRE2_POSIX_LIBRARY} ${PCRE2_LIBRARY})
+  set(PCRE2_INCLUDE_DIRS ${PCRE2_INCLUDE_DIR})
+  mark_as_advanced(PCRE2_INCLUDE_DIR PCRE2_POSIX_LIBRARY PCRE2_LIBRARY)
+endif()
 
 # Build pplatex
 add_subdirectory(src)
