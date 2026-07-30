@@ -1,4 +1,4 @@
-** Warning in /usr/share/texmf/tex/latex/pgf/basiclayer/pgfbaseimage.sty: 
+** Warning in /usr/share/texmf/tex/latex/pgf/basiclayer/pgfbaseimage.sty, Line 13: 
    (Package pgf) This package is obsolete and no longer needed on input line 13.
 
 ** Warning in /usr/share/texmf/tex/latex/beamer/base/beamer.cls: 

@@ -1,10 +1,10 @@
-** Warning in /usr/share/texmf/tex/latex/pgf/basiclayer/pgfbaseimage.sty: 
+** Warning in /usr/share/texmf/tex/latex/pgf/basiclayer/pgfbaseimage.sty, Line 13: 
    (Package pgf) This package is obsolete and no longer needed on input line 13.
 
 ** Warning in /usr/share/texmf/tex/latex/beamer/base/beamer.cls: 
    (Package hyperref) Option `pdfpagelabels' is turned off because \thepage is undefined.
 
-** Warning in /home/stefan/Documents/Uni/Vorlesungen/TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex: 
+** Warning in /home/stefan/Documents/Uni/Vorlesungen/TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex, Line 44: 
    (Package hyperref) Token not allowed in a PDFDocEncoded string,
    removing `\new@ifnextchar' on input line 44.
 

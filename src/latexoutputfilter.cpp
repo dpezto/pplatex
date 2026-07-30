@@ -590,8 +590,19 @@ bool LatexOutputFilter::detectWarning(const string & strLine, short &dwCookie)
 
 	    //warning spans multiple lines, detect the end
 	    case Warning :
-		flush = detectLaTeXLineNumber(warning, dwCookie, strLine.length());
+	    {
+		// The line-number scan needs the text of this continuation
+		// line; it used to receive the empty `warning` local, so a
+		// warning that carries its "on input line N." on a later line
+		// never got a source line. Strip trailing spaces first, the
+		// end-of-line anchors cannot see past them.
+		string cont = strLine;
+		size_t end = cont.find_last_not_of(" \t");
+		cont = (end == string::npos) ? "" : cont.substr(0, end+1);
+
+		flush = detectLaTeXLineNumber(cont, dwCookie, strLine.length());
 		m_currentItem.addMessage(strLine, needsSpace());
+	    }
 		break;
 
 	    default:
@@ -615,7 +626,10 @@ bool LatexOutputFilter::detectLaTeXLineNumber(string & warning, short & dwCookie
 	//KILE_DEBUG() << "==LatexOutputFilter::detectLaTeXLineNumber(" << warning.length() << ")================" << endl;
 
 	static Regex reLaTeXLineNumber("(.*) on input line ([0-9]+)\\.$", true);
-	static Regex reInternationalLaTeXLineNumber("(.*)([0-9]+)\\.$", true);
+	// The greedy (.*) must not eat into the number: on a line wrapped
+	// mid-word such as "e 13." it left only the final digit in group 2,
+	// reporting line 3 for line 13.
+	static Regex reInternationalLaTeXLineNumber("(.*[^0-9])([0-9]+)\\.$", true);
 
 	if(reLaTeXLineNumber.match(warning)) {
 		//KILE_DEBUG() << "een" << endl;
