@@ -11,11 +11,12 @@
 *.la
 *.a
 
-# SCons files
-*.pyc
-.sconsign.dblite
-
 # Build directories
+build
 bin
 tmp
 dist
+
+# LaTeX droppings: running pplatex in wrapper mode from the repo root makes
+# the engine write its log here. The real fixtures all live in test/.
+/*.log

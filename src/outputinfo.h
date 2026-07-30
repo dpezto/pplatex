@@ -21,25 +21,35 @@
 #define OUTPUTINFO_H
 
 #include <string>
-#include <stack>
 
 /**
- * Class for output-information of third program (e.g. Latex-Output, C-Compiler output)
+ * A single message parsed out of the LaTeX output, and the formatting of that
+ * message for the console.
  *
  * @author Thorsten Lck
  * @author Jeroen Wijnhout
  * @author Stefan Hepp
  **/
 
-class OutputInfo
+class LatexOutputInfo
 {
     public:
 	/**
+	 * These constants are describing, which item type is currently
+	 * parsed. (to be set as error code)
+	 **/
+	enum tagCookies
+	{
+		itmNone = 0,
+		itmError,
+		itmWarning,
+		itmBadBox
+	};
+
+	/**
 	 * Constructs an invalid output information object.
 	 **/
-	OutputInfo();
-
-	OutputInfo(const std::string &strSrcFile, int nSrcLine, int nOutputLine, const std::string &strError = "", int nErrorID = -1);
+	LatexOutputInfo();
 
 	/**
 	 * Returns true if and only if this object contains valid output
@@ -53,8 +63,6 @@ class OutputInfo
 	void setSource(const std::string& src) { m_strSrcFile = src; }
 
 	/** Line number in source file of the current message */
-	int sourceLine() const { return m_nSrcLine; }
-	/** Line number in source file of the current message */
 	void setSourceLine(int line) { m_nSrcLine =  line; }
 
 	/** Error message */
@@ -64,8 +72,6 @@ class OutputInfo
 	void setMessage(const std::string& message) { m_strError = message; }
 
 	void setPackage(const std::string& msgClass, const std::string& package) { m_msgClass = msgClass; m_package = package; }
-
-	const std::string getClass() const { return m_msgClass; }
 
 	/** Error code */
 	int type() const { return m_nErrorID; }
@@ -83,12 +89,12 @@ class OutputInfo
 	 **/
 	void clear();
 
-	/**
-	 * Comparison operator
-	 **/
-	bool operator==(const OutputInfo& info) const;
+	/** The message as it is printed to the console, including a trailing blank line. */
+	std::string getMessage();
 
-    protected:
+	void addMessage(const std::string& msg, bool addSpace = true);
+
+    private:
 	std::string m_strSrcFile;
 	int m_nSrcLine;
 	std::string m_strError;
@@ -97,41 +103,5 @@ class OutputInfo
 	int m_nOutputLine;
 	int m_nErrorID;
 };
-
-/**
- * Array of OutputInfo
- * @author Thorsten Lck
- **/
-typedef std::stack<OutputInfo> OutputInfoArray;
-
-class LatexOutputInfo : public OutputInfo
-{
-    public:
-	LatexOutputInfo();
-	LatexOutputInfo(const std::string& strSrcFile, int nSrcLine, int nOutputLine, const std::string& strError = "", int nErrorID = -1);
-	
-	std::string getMessage();
-
-	void addMessage(const std::string& msg, bool addSpace = true);
-
-    public:
-	/**
-	 * These constants are describing, which item types is currently
-	 * parsed. (to be set as error code)
-	 **/
-	enum tagCookies
-	{
-		itmNone = 0,
-		itmError,
-		itmWarning,
-		itmBadBox
-	};
-};
-
-/**
- * Array of LatexOutputInfo
- * @author Thorsten Lck
- **/
-typedef std::stack<LatexOutputInfo> LatexOutputInfoArray;
 
 #endif

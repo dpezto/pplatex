@@ -19,7 +19,6 @@
 #ifndef LATEXOUTPUTFILTER_H
 #define LATEXOUTPUTFILTER_H
 
-#include "outputfilter.h"
 #include "outputinfo.h"
 
 #include <cstdio>
@@ -51,13 +50,14 @@ private:
 	bool m_reliable;
 };
 
-class LatexOutputFilter : public OutputFilter
+class LatexOutputFilter
 {
     public:
-        LatexOutputFilter(const std::string& source, const std::string& logfile, int verbose, bool nobadboxes, bool quiet);
+        LatexOutputFilter(const std::string& source, int verbose, bool nobadboxes, bool quiet);
         ~LatexOutputFilter();
 
-        virtual bool run(FILE *out);
+        /** Read the compiler output and print every message found in it. */
+        bool run(FILE *out);
 
 	enum {Start = 0, FileName, FileNameHeuristic, Error, Warning, BadBox, LineNumber};
 
@@ -81,7 +81,13 @@ class LatexOutputFilter : public OutputFilter
 	void clearErrorCount() { m_nErrors=m_nWarnings=m_nBadBoxes=0 ; }
 
     protected:
-	virtual short parseLine(const std::string & strLine, short dwCookie);
+	short parseLine(const std::string & strLine, short dwCookie);
+
+	const std::string& source() const { return m_source; }
+	const std::string& path() const { return m_srcPath; }
+
+	/** Zero based index of the currently parsed line in the output file. */
+	int GetCurrentOutputLine() const { return m_nOutputLines; }
 
 	bool detectError(const std::string & strLine, short &dwCookie);
 	bool detectWarning(const std::string & strLine, short &dwCookie);
@@ -96,22 +102,15 @@ class LatexOutputFilter : public OutputFilter
 	 */
 	bool needsSpace();
 
-        // types
-    protected:
-        /**
-        These constants are describing, which item types is currently
-        parsed.
-        */
-        enum tagCookies
-        {
-            itmNone = 0,
-            itmError,
-            itmWarning,
-            itmBadBox
-        };
-
         // attributes
     private:
+	/** Number of the current line in the output file */
+	unsigned int m_nOutputLines;
+
+	std::string m_source, m_srcPath;
+
+	int m_verbose;
+
         /** number or errors detected */
         int m_nErrors;
 
@@ -120,8 +119,6 @@ class LatexOutputFilter : public OutputFilter
 
         /** number of bad boxes detected */
         int m_nBadBoxes;
-
-	int m_nParens;
 
 	/** Length of the previous line, to check if we need a space in the next line */
 	size_t m_nLastLineLength;

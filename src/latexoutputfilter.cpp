@@ -20,7 +20,6 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
-#include <pcreposix.h>
 
 #include <cstdlib>
 #include <string>
@@ -32,8 +31,6 @@
 using namespace std;
 
 ////// Helper Functions //////
-
-#define KILE_DEBUG() cerr
 
 // Maximum length of a latex log line.
 #define MAX_LATEX_LINE_LENGTH  79
@@ -61,7 +58,12 @@ static int parseInt(const string& str)
     return i;
 }
 
-static string trim(const string& str) {
+/**
+ * Strip whitespace from both ends of a line. Trailing spaces are only removed
+ * when trimSpaces is set: the raw log lines keep theirs, because needsSpace()
+ * infers latex's line wrapping from the untrimmed line length.
+ */
+static string trim(const string& str, bool trimSpaces = true) {
 
     size_t start = str.find_first_not_of(" \t\n\r");
 
@@ -69,7 +71,7 @@ static string trim(const string& str) {
         return "";
     }
 
-    size_t end   = str.find_last_not_of(" \t\n\r");
+    size_t end   = str.find_last_not_of(trimSpaces ? " \t\n\r" : "\t\n\r");
 
     return str.substr( start, end-start+1 );
 }
@@ -89,14 +91,23 @@ static bool endsWith(const string &str, char c) {
 
 ////// Class Code //////
 
-LatexOutputFilter::LatexOutputFilter(const string& source, const string& logfile, int verbose, bool nobadboxes, bool quiet) :
-    OutputFilter(source, logfile, verbose),
+LatexOutputFilter::LatexOutputFilter(const string& source, int verbose, bool nobadboxes, bool quiet) :
+    m_nOutputLines(0),
+    m_source(source),
+    m_verbose(verbose),
     m_nErrors(0),
     m_nWarnings(0),
     m_nBadBoxes(0),
     m_nobadboxes(nobadboxes),
     m_quiet(quiet)
 {
+    // TODO maybe use better method to handle also escaped chars in filename
+    size_t pos = source.find_last_of("/\\");
+    if ( pos == string::npos ) {
+	m_srcPath = ".";
+    } else {
+	m_srcPath = source.substr(0,pos);
+    }
 }
 
 LatexOutputFilter::~ LatexOutputFilter()
@@ -129,17 +140,6 @@ bool LatexOutputFilter::fileExists(const string & name)
     if ( file_exists(file + ".tex") ) {
 	return true;
     }
-
-    // try to determine the LaTeX source file
-    /*
-    QStringList extlist = m_extensions->latexDocuments().split(' ');
-    for(QStringList::Iterator it = extlist.begin(); it!=extlist.end(); ++it) {
-	    fi.setFile(path() + '/' + name + (*it));
-	    if(fi.exists() && !fi.isDir()) {
-		    return true;
-	    }
-    }
-    */
 
     return false;
 }
@@ -351,15 +351,15 @@ void LatexOutputFilter::flushCurrentItem()
     m_currentItem.setSource(sourceFile);
 
     switch (nItemType) {
-	case itmError:
+	case LatexOutputInfo::itmError:
 	    ++m_nErrors;
 	    break;
 
-	case itmWarning:
+	case LatexOutputInfo::itmWarning:
 	    ++m_nWarnings;
 	    break;
 
-	case itmBadBox:
+	case LatexOutputInfo::itmBadBox:
 	    ++m_nBadBoxes;
 	    break;
 
@@ -367,8 +367,8 @@ void LatexOutputFilter::flushCurrentItem()
     }
 
     // print message
-    if ( nItemType == itmError || (nItemType == itmWarning && !m_quiet) || 
-	(nItemType == itmBadBox && !m_nobadboxes) ) {
+    if ( nItemType == LatexOutputInfo::itmError || (nItemType == LatexOutputInfo::itmWarning && !m_quiet) || 
+	(nItemType == LatexOutputInfo::itmBadBox && !m_nobadboxes) ) {
 	cout << m_currentItem.getMessage();
     }
 
@@ -449,7 +449,7 @@ bool LatexOutputFilter::detectError(const string & strLine, short &dwCookie)
 	}
 
 	if(found) {
-		m_currentItem.setType(itmError);
+		m_currentItem.setType(LatexOutputInfo::itmError);
 		m_currentItem.setOutputLine(GetCurrentOutputLine());
 	}
 
@@ -473,7 +473,7 @@ bool LatexOutputFilter::detectWarning(const string & strLine, short &dwCookie)
 	bool found = false, flush = false;
 	string warning;
 
-	static Regex reLaTeXWarning("^(! )?(LaTeX|pdfTeX|Package|Class) ((.*) )?Warning.*:(.*)$", true);
+	static Regex reLaTeXWarning("^(! )?(LaTeX|pdfTeX|Package|Class) ((.*) )?Warning[^:]*: (.*)$", true);
 	static Regex reNoFile("No file (.*)");
 	// FIXME can be removed when http://sourceforge.net/tracker/index.php?func=detail&aid=1772022&group_id=120000&atid=685683 has promoted to the users
 	static Regex reNoAsyFile("File .* does not exist.");
@@ -526,7 +526,7 @@ bool LatexOutputFilter::detectWarning(const string & strLine, short &dwCookie)
 	}
 
 	if(found) {
-	    m_currentItem.setType(itmWarning);
+	    m_currentItem.setType(LatexOutputInfo::itmWarning);
 	    m_currentItem.setOutputLine(GetCurrentOutputLine());
 	}
 
@@ -609,7 +609,7 @@ bool LatexOutputFilter::detectBadBox(const string & strLine, short & dwCookie)
 	}
 
 	if(found) {
-	    m_currentItem.setType(itmBadBox);
+	    m_currentItem.setType(LatexOutputInfo::itmBadBox);
 	    m_currentItem.setOutputLine(GetCurrentOutputLine());
 	}
 
@@ -626,9 +626,13 @@ bool LatexOutputFilter::detectBadBoxLineNumber(string & strLine, short & dwCooki
 
 	static Regex reBadBoxLines("(.*) at lines ([0-9]+)--([0-9]+)", true);
 	static Regex reBadBoxLine("(.*) at line ([0-9]+)", true);
-	//Use the following only, if you know how to get the source line for it.
-	// This is not simple, as TeX is not reporting it.
-	static Regex reBadBoxOutput("(.*)has occurred while \\\\output is active^", true);
+	// A badbox reported as "has occurred while \output is active" carries no
+	// source line, because TeX does not report one. A pattern for it used to
+	// live here, anchored as "...is active^", which could never match. The
+	// bail-out below already assigns line 0 to these, so nothing was lost.
+	// Reinstating the pattern is not worth it: its branch also read capture
+	// groups from reBadBoxLines, which returns stale offsets from an earlier
+	// match when reBadBoxLines itself did not match.
 
 	string match = strLine;
 
@@ -645,12 +649,6 @@ bool LatexOutputFilter::detectBadBoxLineNumber(string & strLine, short & dwCooki
 		strLine = reBadBoxLine.getMatch(match,1);
 		m_currentItem.setSourceLine(parseInt(reBadBoxLine.getMatch(match,2)));
 		//KILE_DEBUG() << "\tBadBox@" << reBadBoxLine.getMatch(strLine,2) << "." << endl;
-		return true;
-	}
-	else if(reBadBoxOutput.match(strLine)) {
-		dwCookie = Start;
-		strLine = reBadBoxLines.getMatch(match,1);
-		m_currentItem.setSourceLine(0);
 		return true;
 	}
 	//bailing out, did not find a line number
@@ -705,14 +703,47 @@ short LatexOutputFilter::parseLine(const string & strLine, short dwCookie)
 
 bool LatexOutputFilter::run(FILE *out)
 {
-	m_nErrors = m_nWarnings = m_nBadBoxes = m_nParens = 0;
+	m_nErrors = m_nWarnings = m_nBadBoxes = 0;
 	m_nLastLineLength = 0;
 	while (!m_stackFile.empty()) {
 	    m_stackFile.pop();
 	}
 	m_stackFile.push(LOFStackItem(source()));
 
-	bool ret = OutputFilter::run(out);
+	m_nOutputLines = 0;
+
+	short sCookie = 0;
+	string s = "";
+
+	char line[120];
+	line[119] = line[118] = 0;
+
+	while ( fgets(line, sizeof(line), out) ) {
+
+	    s += line;
+
+	    if ( line[118] != 0 && line[118] != '\n' ) {
+		// line is too long, continue reading
+		line[118] = 0;
+		continue;
+	    }
+
+	    if ( m_verbose ) {
+		cerr << s;
+	    }
+
+	    sCookie = parseLine(trim(s, false), sCookie);
+	    ++m_nOutputLines;
+
+	    s.clear();
+	}
+
+	bool ret = true;
+
+	if ( ferror(out) ) {
+	    perror("Parsing stdout");
+	    ret = false;
+	}
 
 	if ( m_currentItem.isValid() ) {
 	    flushCurrentItem();

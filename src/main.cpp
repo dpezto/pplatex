@@ -20,6 +20,7 @@
 #include <string>
 #include <cstdio>
 #include <cstdlib>
+#include <cctype>
 
 #if defined( __WIN32__ ) || defined( _WIN32 )
 
@@ -37,6 +38,33 @@
 #include "latexoutputfilter.h"
 
 using namespace std;
+
+/**
+ * Reduce argv[0] to the bare name pplatex was invoked as, so that the LaTeX
+ * engine can be selected from it. Strips any directory prefix and, on Windows,
+ * a trailing executable suffix.
+ */
+static string programName(const char* argv0) {
+    string name(argv0);
+
+    size_t pos = name.find_last_of("/\\");
+    if ( pos != string::npos ) {
+	name = name.substr(pos+1);
+    }
+
+    static const string exe = ".exe";
+    if ( name.length() > exe.length() ) {
+	string tail = name.substr(name.length() - exe.length());
+	for (size_t i = 0; i < tail.length(); i++) {
+	    tail[i] = tolower(tail[i]);
+	}
+	if ( tail == exe ) {
+	    name = name.substr(0, name.length() - exe.length());
+	}
+    }
+
+    return name;
+}
 
 class ArgParser {
     public:
@@ -118,14 +146,14 @@ class ArgParser {
 	    int quietopt = 0;
 	    int bbopt = 0;
 
-	    string name(argv[0]);
+	    string name = programName(argv[0]);
 
-	    if ( name.compare(name.length()-7,7,"pplatex") == 0 ) {
-		program = "latex";
-	    } else if ( name.compare(name.length()-9,9,"ppdflatex") == 0 ) {
+	    if ( name == "ppdflatex" ) {
 		program = "pdflatex";
-            } else if ( name.compare(name.length()-8,8,"ppluatex") == 0 ) {
+	    } else if ( name == "ppluatex" ) {
 		program = "lualatex";
+	    } else if ( name == "pplatex" ) {
+		program = "latex";
 	    } else {
 		cerr << "Invalid name for application binary." << endl;
 		exit(2);
@@ -159,7 +187,7 @@ class ArgParser {
 		else if ( !quietopt && (arg == "-q" || arg == "--quiet" ) ) {
 		    quietopt = i;
 		}
-		else if ( !quietopt && (arg == "-b" || arg == "--nobadboxes" ) ) {
+		else if ( !bbopt && (arg == "-b" || arg == "--nobadboxes" ) ) {
 		    bbopt = i;
 		}
 	    }
@@ -324,9 +352,9 @@ int main(int argc, char** argv) {
 	if ( parser.isVerbose() ) {
 	    cout << "Parsing ";
 	    if ( parser.getLogfile() == "-" ) {
-		cout << "logfile " << parser.getLogfile() << endl;
-	    } else {
 		cout << "stdin" << endl;
+	    } else {
+		cout << "logfile " << parser.getLogfile() << endl;
 	    }
 	}
 
@@ -345,11 +373,11 @@ int main(int argc, char** argv) {
 
 	if ( !fp ) {
 	    perror("Error");
-	    cerr << "Unable to open "; 
+	    cerr << "Unable to open ";
 	    if ( parser.getLogfile() == "-" ) {
-		cout << "stdin" << endl;
+		cerr << "stdin" << endl;
 	    } else {
-		cout << "logfile " << parser.getLogfile() << endl;
+		cerr << "logfile " << parser.getLogfile() << endl;
 	    }
 	    return 1;
 	}
@@ -367,7 +395,7 @@ int main(int argc, char** argv) {
 	}
     }
 
-    LatexOutputFilter of(parser.getSourcefile(), parser.getLogfile(), parser.isVerbose(), parser.noBadBoxes() || parser.isQuiet(), parser.isQuiet());
+    LatexOutputFilter of(parser.getSourcefile(), parser.isVerbose(), parser.noBadBoxes() || parser.isQuiet(), parser.isQuiet());
 
     of.run(fp);
 
