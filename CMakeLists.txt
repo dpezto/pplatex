@@ -56,6 +56,9 @@ else()
   mark_as_advanced(PCRE2_INCLUDE_DIR PCRE2_POSIX_LIBRARY PCRE2_LIBRARY)
 endif()
 
+# Standard bin/share layout, so packagers can override CMAKE_INSTALL_PREFIX
+include(GNUInstallDirs)
+
 # Build pplatex
 add_subdirectory(src)
 
