@@ -127,7 +127,9 @@ LatexOutputFilter::LatexOutputFilter(const string& source, int verbose, bool nob
     m_nWarnings(0),
     m_nBadBoxes(0),
     m_nobadboxes(nobadboxes),
-    m_quiet(quiet)
+    m_quiet(quiet),
+    m_hasPending(false),
+    m_pendingVisible(false)
 {
     // TODO maybe use better method to handle also escaped chars in filename
     size_t pos = source.find_last_of("/\\");
@@ -408,13 +410,40 @@ void LatexOutputFilter::flushCurrentItem()
 	default: break;
     }
 
-    // print message
-    if ( nItemType == LatexOutputInfo::itmError || (nItemType == LatexOutputInfo::itmWarning && !m_quiet) || 
-	(nItemType == LatexOutputInfo::itmBadBox && !m_nobadboxes) ) {
-	cout << m_currentItem.getMessage();
-    }
+    bool visible = nItemType == LatexOutputInfo::itmError
+		|| (nItemType == LatexOutputInfo::itmWarning && !m_quiet)
+		|| (nItemType == LatexOutputInfo::itmBadBox && !m_nobadboxes);
+
+    // Every item enters the slot, printable or not: the slot has to mean "the
+    // item most recently completed", or context following a suppressed warning
+    // would attach itself to whatever error came before it.
+    emitItem(m_currentItem, visible);
 
     m_currentItem.clear();
+}
+
+void LatexOutputFilter::emitItem(const LatexOutputInfo& item, bool visible)
+{
+    releasePending();
+
+    m_pendingItem = item;
+    m_pendingVisible = visible;
+    m_hasPending = true;
+}
+
+void LatexOutputFilter::releasePending()
+{
+    if ( !m_hasPending ) {
+	return;
+    }
+
+    if ( m_pendingVisible ) {
+	cout << m_pendingItem.getMessage();
+    }
+
+    m_pendingItem.clear();
+    m_hasPending = false;
+    m_pendingVisible = false;
 }
 
 bool LatexOutputFilter::detectError(const string & strLine, short &dwCookie)
@@ -795,6 +824,9 @@ bool LatexOutputFilter::run(FILE *out)
 	m_fileLineSource.clear();
 	m_nLastLineLength = 0;
 	m_rawLine.clear();
+	m_hasPending = false;
+	m_pendingVisible = false;
+	m_pendingItem.clear();
 	while (!m_stackFile.empty()) {
 	    m_stackFile.pop();
 	}
@@ -845,6 +877,8 @@ bool LatexOutputFilter::run(FILE *out)
 	if ( m_currentItem.isValid() ) {
 	    flushCurrentItem();
 	}
+
+	releasePending();
 
 	return ret;
 }

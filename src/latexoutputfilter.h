@@ -74,6 +74,20 @@ class LatexOutputFilter
         */
         void flushCurrentItem();
 
+	/**
+	Hand a finished item to the output, one item behind.
+
+	TeX prints an error before the context that explains it, and in
+	file:line:error style the context arrives after the item has already
+	been completed. Holding the most recent item back by one lets that
+	context still be attached to the item it belongs to. Depth one is
+	enough: TeX never interleaves the contexts of two errors.
+	*/
+	void emitItem(const LatexOutputInfo& item, bool visible);
+
+	/** Print the held-back item, if any, and empty the slot. */
+	void releasePending();
+
         // overridings
     public:
         /** Return number of errors etc. found in log-file. */
@@ -152,6 +166,13 @@ class LatexOutputFilter
 
         /** The item currently parsed. */
         LatexOutputInfo m_currentItem;
+
+	/** The last completed item, held back so that context can still reach it. */
+	LatexOutputInfo m_pendingItem;
+	bool m_hasPending;
+
+	/** Whether the held-back item passed the -q/-b filter and will be printed. */
+	bool m_pendingVisible;
 
 };
 #endif
