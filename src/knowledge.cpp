@@ -427,6 +427,110 @@ bool annotate(const LatexOutputInfo& item, const DocContext& doc, Annotation& ou
     return false;
 }
 
+/** How far past a message a consequence of it may still appear, in log lines. */
+static const int CASCADE_WINDOW = 30;
+
+/**
+ * Which messages follow from which. Left is the mistake, right is what TeX
+ * says next because of it.
+ */
+static const struct {
+    const char *root;
+    const char *follower;
+} CASCADES[] = {
+    /* A command that does not exist expands to nothing, so whatever was meant
+     * to come out of it is missing. */
+    { "Undefined control sequence", "Missing number, treated as zero" },
+    { "Undefined control sequence", "Illegal unit of measure" },
+    { "Undefined control sequence", "Missing $ inserted" },
+    { "Undefined control sequence", "Missing \\endcsname inserted" },
+    { "Undefined control sequence", "Missing { inserted" },
+    { "Undefined control sequence", "Missing } inserted" },
+    { "Undefined control sequence", "Argument of" },
+
+    /* A missing number is replaced by zero, and the unit is still absent. */
+    { "Missing number, treated as zero", "Illegal unit of measure" },
+
+    /* Once TeX is confused about math mode it stays confused. */
+    { "Missing $ inserted", "Missing $ inserted" },
+    { "Missing $ inserted", "Display math should end with $$" },
+
+    /* TeX emits these as a pair. */
+    { "Runaway argument", "Paragraph ended before" },
+    { "Runaway argument", "File ended while scanning use of" },
+
+    /* The row structure is already broken. */
+    { "Extra alignment tab", "Misplaced \\noalign" },
+};
+
+static const size_t CASCADE_COUNT = sizeof(CASCADES) / sizeof(CASCADES[0]);
+
+static bool startsWith(const string& text, const char *prefix)
+{
+    return text.compare(0, strlen(prefix), prefix) == 0;
+}
+
+bool isConsequenceOf(const LatexOutputInfo& root, const LatexOutputInfo& follower)
+{
+    if ( root.type() != LatexOutputInfo::itmError
+	 || follower.type() != LatexOutputInfo::itmError ) {
+	return false;
+    }
+
+    // Same place, or it is a different problem that happens to look similar.
+    if ( root.source() != follower.source()
+	 || root.sourceLine() != follower.sourceLine() ) {
+	return false;
+    }
+
+    if ( follower.outputLine() - root.outputLine() > CASCADE_WINDOW ) {
+	return false;
+    }
+
+    string a = trimRight(root.headline());
+    string b = trimRight(follower.headline());
+
+    for (size_t i = 0; i < CASCADE_COUNT; i++) {
+	if ( startsWith(a, CASCADES[i].root) && startsWith(b, CASCADES[i].follower) ) {
+	    return true;
+	}
+    }
+
+    // Whatever went wrong, this is TeX reporting that it gave up over it.
+    if ( startsWith(b, "Emergency stop")
+	 || startsWith(b, "Fatal error occurred") ) {
+	return true;
+    }
+
+    return false;
+}
+
+string groupKey(const LatexOutputInfo& item)
+{
+    ostringstream key;
+
+    key << item.type() << '\x1f' << item.package() << '\x1f' << item.source() << '\x1f';
+
+    string text = trimRight(item.headline());
+
+    // A badbox is the same finding wherever it happens and however far over it
+    // runs, so the amount is dropped from the key. Numbers stay in everything
+    // else: "Unicode character (U+00E9)" and "(U+00F1)" are different problems.
+    if ( item.type() == LatexOutputInfo::itmBadBox ) {
+	size_t open = text.find(" (");
+	if ( open != string::npos ) {
+	    size_t close = text.find(')', open);
+	    if ( close != string::npos ) {
+		text = text.substr(0, open) + text.substr(close+1);
+	    }
+	}
+    }
+
+    key << text;
+
+    return key.str();
+}
+
 int selfTestKnowledge()
 {
     static Regex **compiled = new Regex*[HINT_COUNT]();

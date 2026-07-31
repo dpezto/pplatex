@@ -41,10 +41,30 @@ void LatexOutputInfo::clear()
     m_nErrorID = -1;
     m_msgClass.clear();
     m_package.clear();
+    m_occurrences = 1;
+    m_otherLines.clear();
+    m_consequences.clear();
     m_srcContext = TexContext();
     m_hasSrcContext = false;
     m_nSrcColumn = -1;
     m_trace.clear();
+}
+
+void LatexOutputInfo::addOccurrence(int line)
+{
+    m_occurrences++;
+
+    // Only lines that are actually new, and only a few: a list of forty line
+    // numbers is not more useful than a list of three and a count.
+    if ( line <= 0 || line == m_nSrcLine ) {
+	return;
+    }
+    for (size_t i = 0; i < m_otherLines.size(); i++) {
+	if ( m_otherLines[i] == line ) {
+	    return;
+	}
+    }
+    m_otherLines.push_back(line);
 }
 
 void LatexOutputInfo::setSourceContext(const TexContext& context)
@@ -143,7 +163,17 @@ string LatexOutputInfo::getMessage()
 	msg << "(" << m_msgClass << " " << m_package << ") ";
     }
 
-    msg << m_strError << endl;
+    msg << m_strError;
+
+    if ( m_occurrences > 1 ) {
+	msg << " (x" << m_occurrences << ")";
+    }
+
+    msg << endl;
+
+    for (size_t i = 0; i < m_consequences.size(); i++) {
+	msg << "   caused: " << m_consequences[i] << endl;
+    }
 
     msg << endl;
 

@@ -24,6 +24,7 @@
 #include "render.h"
 
 #include <cstdio>
+#include <vector>
 #include <string>
 #include <stack>
 
@@ -74,6 +75,22 @@ class LatexOutputFilter
 	*/
 	void setPretty(bool pretty, const RenderOpts& opts) { m_pretty = pretty; m_renderOpts = opts; }
 
+	/**
+	Report every repeat and every knock-on error separately, rather than
+	grouping them under the message that caused them.
+	*/
+	void setNoCollapse(bool off) { m_collapse = !off; }
+
+	/**
+	Print each message as it is parsed instead of at the end. Grouping needs
+	to see the whole log first, so this turns it off; it matters when pplatex
+	is running latex itself and the reader is watching.
+	*/
+	void setStream(bool stream) { m_stream = stream; }
+
+	/** Messages actually printed, which grouping makes fewer than the count. */
+	void getShownCount(int *errors, int *warnings, int *badboxes);
+
 	enum {Start = 0, FileName, FileNameHeuristic, Error, Warning, BadBox, LineNumber};
 
     protected:
@@ -102,6 +119,17 @@ class LatexOutputFilter
 
 	/** Print the held-back item, if any, and empty the slot. */
 	void releasePending();
+
+	/** Print one message, in whichever layout was asked for. */
+	void printItem(LatexOutputInfo& item);
+
+	/**
+	Group what was collected and print it.
+
+	Runs once the whole log has been read, because neither repeats nor
+	knock-on errors can be recognised from a single message.
+	*/
+	void emitAll();
 
 	/**
 	Watch the raw line for one half of a TeX error context and pair it with
@@ -223,6 +251,15 @@ class LatexOutputFilter
 
 	/** What loaded, gathered over the whole log. */
 	DocContext m_doc;
+
+	/** Messages held for grouping, when not streaming. */
+	std::vector<LatexOutputInfo> m_items;
+
+	bool m_collapse;
+	bool m_stream;
+
+	/** How many messages survived grouping, for the summary. */
+	int m_nShownErrors, m_nShownWarnings, m_nShownBadBoxes;
 
 	bool m_debugModel;
 	bool m_pretty;

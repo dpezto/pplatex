@@ -132,6 +132,11 @@ LatexOutputFilter::LatexOutputFilter(const string& source, int verbose, bool nob
     m_pendingVisible(false),
     m_ctxHeadWidth(0),
     m_hasCtxHead(false),
+    m_collapse(true),
+    m_stream(false),
+    m_nShownErrors(0),
+    m_nShownWarnings(0),
+    m_nShownBadBoxes(0),
     m_debugModel(false),
     m_pretty(false)
 {
@@ -562,6 +567,127 @@ void LatexOutputFilter::observeContext()
 	m_hasCtxHead = true;
 }
 
+/** Turn "Missing number, treated as zero" into "Missing number ... x40". */
+static string consequenceLine(const LatexOutputInfo& item)
+{
+    ostringstream text;
+
+    // The headline, not message(): the latter has the error context appended,
+    // which is what the classic layout has always printed but is noise here.
+    string headline = item.headline();
+    size_t end = headline.find_last_not_of(" \t.");
+    text << (end == string::npos ? headline : headline.substr(0, end+1));
+
+    if ( item.occurrences() > 1 ) {
+	text << " x" << item.occurrences();
+    }
+
+    return text.str();
+}
+
+void LatexOutputFilter::emitAll()
+{
+    // Which chains exist is decided on the raw messages, before any grouping.
+    // The window that says "this followed from that" was measured in log lines
+    // between neighbouring messages; once repeats are collapsed, the surviving
+    // pair can be hundreds of lines apart and the window would reject a chain
+    // that is plainly there.
+    vector<string> consequenceOf(m_items.size());
+
+    if ( m_collapse ) {
+	for (size_t i = 0; i < m_items.size(); i++) {
+	    for (size_t j = 0; j < i; j++) {
+		if ( isConsequenceOf(m_items[j], m_items[i]) ) {
+		    // Attach to the start of the chain, not the link before it,
+		    // so a consequence of a consequence still names the mistake.
+		    consequenceOf[i] = consequenceOf[j].empty()
+				     ? groupKey(m_items[j]) : consequenceOf[j];
+		    break;
+		}
+	    }
+	}
+    }
+
+    // Then collapse repeats. Everything that says the same thing in the same
+    // place is one finding, however many times TeX said it.
+    vector<string> keys;
+    vector<LatexOutputInfo> grouped;
+    vector<string> groupedFollows;
+
+    for (size_t i = 0; i < m_items.size(); i++) {
+	string key = groupKey(m_items[i]);
+	size_t found = keys.size();
+
+	// --no-collapse means every message stands on its own, so nothing is
+	// ever matched to an existing group.
+	for (size_t j = 0; m_collapse && j < keys.size(); j++) {
+	    if ( keys[j] == key ) {
+		found = j;
+		break;
+	    }
+	}
+
+	if ( found < keys.size() ) {
+	    grouped[found].addOccurrence(m_items[i].sourceLine());
+	} else {
+	    keys.push_back(key);
+	    grouped.push_back(m_items[i]);
+	    groupedFollows.push_back(consequenceOf[i]);
+	}
+    }
+
+    // Hang each chain under the message that started it. Fixing that one
+    // removes the rest, so reporting them separately only buries it.
+    vector<bool> demoted(grouped.size(), false);
+
+    for (size_t i = 0; i < grouped.size(); i++) {
+	if ( groupedFollows[i].empty() ) {
+	    continue;
+	}
+
+	for (size_t j = 0; j < grouped.size(); j++) {
+	    if ( j != i && keys[j] == groupedFollows[i] ) {
+		grouped[j].addConsequence(consequenceLine(grouped[i]));
+		demoted[i] = true;
+		break;
+	    }
+	}
+    }
+
+    for (size_t i = 0; i < grouped.size(); i++) {
+	if ( !demoted[i] ) {
+	    printItem(grouped[i]);
+	}
+    }
+
+    m_items.clear();
+}
+
+void LatexOutputFilter::getShownCount(int *errors, int *warnings, int *badboxes)
+{
+    *errors = m_nShownErrors;
+    *warnings = m_nShownWarnings;
+    *badboxes = m_nShownBadBoxes;
+}
+
+void LatexOutputFilter::printItem(LatexOutputInfo& item)
+{
+    switch (item.type()) {
+	case LatexOutputInfo::itmError:   m_nShownErrors++;   break;
+	case LatexOutputInfo::itmWarning: m_nShownWarnings++; break;
+	case LatexOutputInfo::itmBadBox:  m_nShownBadBoxes++; break;
+	default: break;
+    }
+
+    if ( m_pretty ) {
+	Annotation hint;
+	bool hasHint = annotate(item, m_doc, hint);
+	cout << renderPretty(item, m_renderOpts, hasHint ? &hint : 0);
+    } else {
+	cout << item.getMessage();
+    }
+}
+
 void LatexOutputFilter::emitItem(const LatexOutputInfo& item, bool visible)
 {
     releasePending();
@@ -615,12 +741,10 @@ void LatexOutputFilter::releasePending()
 	debugDump(m_pendingItem);
     }
     else if ( m_pendingVisible ) {
-	if ( m_pretty ) {
-	    Annotation hint;
-	    bool hasHint = annotate(m_pendingItem, m_doc, hint);
-	    cout << renderPretty(m_pendingItem, m_renderOpts, hasHint ? &hint : 0);
+	if ( m_stream ) {
+	    printItem(m_pendingItem);
 	} else {
-	    cout << m_pendingItem.getMessage();
+	    m_items.push_back(m_pendingItem);
 	}
     }
 
@@ -1023,6 +1147,8 @@ bool LatexOutputFilter::run(FILE *out)
 	m_ctxHeadWidth = 0;
 	m_doc.loadedPackages.clear();
 	m_doc.loadedClasses.clear();
+	m_items.clear();
+	m_nShownErrors = m_nShownWarnings = m_nShownBadBoxes = 0;
 	while (!m_stackFile.empty()) {
 	    m_stackFile.pop();
 	}
@@ -1075,6 +1201,7 @@ bool LatexOutputFilter::run(FILE *out)
 	}
 
 	releasePending();
+	emitAll();
 
 	if ( m_debugModel ) {
 	    cout << "document" << endl;

@@ -234,10 +234,18 @@ string renderPretty(const LatexOutputInfo& item, const RenderOpts& opts,
 	qualifier = "[" + item.package() + "]";
     }
 
+    string repeats;
+    if ( item.occurrences() > 1 ) {
+	ostringstream count;
+	count << " (x" << item.occurrences() << ")";
+	repeats = count.str();
+    }
+
     string headline = dropFullStop(trimRight(item.headline()));
 
     out << severityColor << severity << qualifier << ":" << pal.reset
-	<< " " << pal.bold << headline << pal.reset << "\n";
+	<< " " << pal.bold << headline << pal.reset
+	<< pal.dim << repeats << pal.reset << "\n";
 
     // The gutter is as wide as the line number it has to hold.
     bool hasLine = item.sourceLine() > 0;
@@ -320,6 +328,50 @@ string renderPretty(const LatexOutputInfo& item, const RenderOpts& opts,
 	}
     }
 
+    // The other places the same thing happened. Collapsing them away without
+    // saying where they were would lose the only thing that told them apart.
+    if ( !item.otherLines().empty() ) {
+	if ( !notes ) {
+	    out << bar << "\n";
+	    notes = true;
+	}
+
+	ostringstream lines;
+	lines << "also at line" << (item.otherLines().size() > 1 ? "s " : " ");
+
+	size_t shown = item.otherLines().size() < 3 ? item.otherLines().size() : 3;
+	for (size_t i = 0; i < shown; i++) {
+	    lines << (i ? ", " : "") << item.otherLines()[i];
+	}
+	if ( item.otherLines().size() > shown ) {
+	    lines << " and " << (item.otherLines().size() - shown) << " more";
+	}
+
+	out << note << pal.dim << lines.str() << pal.reset << "\n";
+    }
+
+    // Errors that only happened because this one did. Shown, because a reader
+    // who saw them in the raw log needs to know where they went, but shown
+    // here rather than on their own, because this is the one to fix.
+    if ( !item.consequences().empty() ) {
+	if ( !notes ) {
+	    out << bar << "\n";
+	    notes = true;
+	}
+
+	string label = "caused: ";
+	for (size_t i = 0; i < item.consequences().size(); i++) {
+	    if ( i == 0 ) {
+		out << note << pal.dim << label << pal.reset << item.consequences()[i] << "\n";
+	    } else {
+		out << spaces(gutter+3) << spaces(label.length())
+		    << item.consequences()[i] << "\n";
+	    }
+	}
+	out << spaces(gutter+3) << spaces(label.length()) << pal.dim
+	    << "these go away when the error above is fixed" << pal.reset << "\n";
+    }
+
     // What to do about it. The label states how far the advice can be
     // trusted, because some of it is a rule of the format and some of it is
     // inferred from a table and from whatever the log happened to record.
@@ -348,15 +400,34 @@ static string count(int n, const char *singular, const char *plural)
     return toString(n) + " " + (n == 1 ? singular : plural);
 }
 
-string renderSummary(int errors, int warnings, int badboxes, const RenderOpts& opts)
+/** "3 errors", or "3 errors (374 reported)" when grouping hid some. */
+static string tally(int shown, int total, const char *singular, const char *plural)
+{
+    string text = count(shown, singular, plural);
+
+    if ( total > shown ) {
+	ostringstream extra;
+	extra << text << " (" << total << " reported)";
+	return extra.str();
+    }
+
+    return text;
+}
+
+string renderSummary(int errors, int warnings, int badboxes,
+		     int shownErrors, int shownWarnings, int shownBadBoxes,
+		     const RenderOpts& opts)
 {
     const Palette& pal = palette(opts.color);
 
     ostringstream out;
 
-    out << (errors   ? pal.error   : pal.dim) << count(errors, "error", "errors")     << pal.reset << ", "
-	<< (warnings ? pal.warning : pal.dim) << count(warnings, "warning", "warnings") << pal.reset << ", "
-	<< (badboxes ? pal.badbox  : pal.dim) << count(badboxes, "badbox", "badboxes")  << pal.reset << "\n";
+    out << (errors   ? pal.error   : pal.dim)
+	<< tally(shownErrors, errors, "error", "errors") << pal.reset << ", "
+	<< (warnings ? pal.warning : pal.dim)
+	<< tally(shownWarnings, warnings, "warning", "warnings") << pal.reset << ", "
+	<< (badboxes ? pal.badbox : pal.dim)
+	<< tally(shownBadBoxes, badboxes, "badbox", "badboxes") << pal.reset << "\n";
 
     return out.str();
 }

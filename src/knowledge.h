@@ -76,6 +76,24 @@ struct Annotation
 bool annotate(const LatexOutputInfo& item, const DocContext& doc, Annotation& out);
 
 /**
+ * True if <follower> only happened because <root> did.
+ *
+ * An undefined command expands to nothing, so the dimension that was supposed
+ * to follow it is missing, so the unit after that is missing too: one mistake,
+ * three errors. Reporting all three as separate problems buries the only one
+ * worth fixing. Each rule here names a mechanism, not a correlation.
+ */
+bool isConsequenceOf(const LatexOutputInfo& root, const LatexOutputInfo& follower);
+
+/**
+ * A key identifying messages that say the same thing, for reporting repeats
+ * once. Badbox amounts are left out of it, so that the same overfull line at
+ * two sizes counts as one finding; everything else compares exactly, because
+ * numbers in an error are usually the part that matters.
+ */
+std::string groupKey(const LatexOutputInfo& item);
+
+/**
  * Check the built-in tables for internal consistency and print what is wrong.
  * Returns the number of problems found. Exposed so that --self-test can gate
  * a release on it.

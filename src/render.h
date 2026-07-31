@@ -40,7 +40,9 @@ std::string renderPretty(const LatexOutputInfo& item, const RenderOpts& opts,
 			 const Annotation *hint);
 
 /** The closing tally, e.g. "1 error, 2 warnings, 0 badboxes". */
-std::string renderSummary(int errors, int warnings, int badboxes, const RenderOpts& opts);
+std::string renderSummary(int errors, int warnings, int badboxes,
+			  int shownErrors, int shownWarnings, int shownBadBoxes,
+			  const RenderOpts& opts);
 
 /**
  * Make a path fit for reading: relative to the working directory where it can

@@ -112,6 +112,26 @@ class LatexOutputInfo
 	const TexContext& sourceContext() const { return m_srcContext; }
 	void setSourceContext(const TexContext& context);
 
+	/**
+	 * How many times this message occurred, and on which other lines.
+	 *
+	 * Identical messages are reported once. The count is kept because
+	 * "this happened forty times" is information, and the lines are kept
+	 * because collapsing them away would lose the only thing that
+	 * distinguished them.
+	 **/
+	int occurrences() const { return m_occurrences; }
+	const std::vector<int>& otherLines() const { return m_otherLines; }
+	void addOccurrence(int line);
+
+	/**
+	 * Messages that only happened because this one did, as "<text> xN".
+	 * Kept under the message that caused them rather than reported
+	 * separately: fixing this one removes all of them.
+	 **/
+	const std::vector<std::string>& consequences() const { return m_consequences; }
+	void addConsequence(const std::string& text) { m_consequences.push_back(text); }
+
 	/** Expansion frames, outermost first, as TeX printed them. */
 	const std::vector<TexContext>& trace() const { return m_trace; }
 	void addTrace(const TexContext& context) { m_trace.push_back(context); }
@@ -175,6 +195,10 @@ class LatexOutputInfo
 	std::string m_package;
 	int m_nOutputLine;
 	int m_nErrorID;
+
+	int m_occurrences;
+	std::vector<int> m_otherLines;
+	std::vector<std::string> m_consequences;
 
 	TexContext m_srcContext;
 	bool m_hasSrcContext;

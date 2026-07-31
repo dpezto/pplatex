@@ -27,7 +27,7 @@ badbox: Overfull \hbox (2.84398pt too wide) in paragraph
     = likely: Text runs past the right margin. Reword it, allow a break with \-,
               or load \usepackage{microtype}.
 
-error: Undefined control sequence
+error: Undefined control sequence (x2)
    --> /home/.../TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex:292:12
     |
 292 | \end{frame}
@@ -35,18 +35,8 @@ error: Undefined control sequence
     |
     = expanding: \Contradiction ->\blitza
                                   ^^^^^^^
+    = also at line 312
     = likely: \blitza is not defined and is not a command we know.
               Check the spelling, or define it with \newcommand in the preamble.
 
-error: Undefined control sequence
-   --> /home/.../TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex:312:12
-    |
-312 | \end{frame}
-    |            ^
-    |
-    = expanding: \Contradiction ->\blitza
-                                  ^^^^^^^
-    = likely: \blitza is not defined and is not a command we know.
-              Check the spelling, or define it with \newcommand in the preamble.
-
-2 errors, 4 warnings, 1 badbox
+1 error (2 reported), 4 warnings, 1 badbox

@@ -104,6 +104,8 @@ class ArgParser {
 	    width = 0;
 	    debugmodel = false;
 	    selftest = false;
+	    nocollapse = false;
+	    stream = false;
 
 	    readEnvironment();
 	    parseArguments();
@@ -177,6 +179,14 @@ class ArgParser {
 	    return selftest;
 	}
 
+	bool noCollapse() {
+	    return nocollapse;
+	}
+
+	bool streaming() {
+	    return stream;
+	}
+
     private:
 	int argc;
 	char** argv;
@@ -198,6 +208,8 @@ class ArgParser {
 	int width;
 	bool debugmodel;
 	bool selftest;
+	bool nocollapse;
+	bool stream;
 
 	/**
 	 * Presentation defaults, for setting once in a shell profile. Command
@@ -230,7 +242,7 @@ class ArgParser {
 	    int quietopt = 0;
 	    int bbopt = 0;
 	    int formatopt = 0, coloropt = 0, charsetopt = 0, pathsopt = 0, widthopt = 0;
-	    int debugopt = 0;
+	    int debugopt = 0, collapseopt = 0, streamopt = 0;
 	    string formatval, colorval, charsetval, pathsval, widthval;
 
 	    string name = programName(argv[0]);
@@ -296,6 +308,12 @@ class ArgParser {
 		else if ( !debugopt && arg == "--debug-model" ) {
 		    debugopt = i;
 		}
+		else if ( !collapseopt && arg == "--no-collapse" ) {
+		    collapseopt = i;
+		}
+		else if ( !streamopt && arg == "--stream" ) {
+		    streamopt = i;
+		}
 		else if ( options == 1 && arg == "--self-test" ) {
 		    selftest = true;
 		}
@@ -344,6 +362,12 @@ class ArgParser {
 	    }
 	    if ( debugopt && debugopt < options ) {
 		debugmodel = true;
+	    }
+	    if ( collapseopt && collapseopt < options ) {
+		nocollapse = true;
+	    }
+	    if ( streamopt && streamopt < options ) {
+		stream = true;
 	    }
 	    if ( widthopt && widthopt < options ) {
 		width = atoi(widthval.c_str());
@@ -449,6 +473,8 @@ static void usage(char* program) {
     cout << "    --paths=MODE       short (default), full" << endl;
     cout << "    --width=N          Wrap the readable output at N columns" << endl;
     cout << "    --self-test        Check the built-in hint tables and exit" << endl;
+    cout << "    --no-collapse      Report repeats and knock-on errors separately" << endl;
+    cout << "    --stream           Print messages as parsed, without grouping" << endl;
     cout << endl;
     cout << "  'auto' means the readable layout on a terminal and the classic one" << endl;
     cout << "  everywhere else, so that redirected output stays machine readable." << endl;
@@ -554,14 +580,23 @@ int main(int argc, char** argv) {
 
     of.setDebugModel(parser.debugModel());
     of.setPretty(pretty, opts);
+    of.setNoCollapse(parser.noCollapse());
+    of.setStream(parser.streaming());
 
     of.run(fp);
 
     int errors, warnings, badboxes;
     of.getErrorCount( &errors, &warnings, &badboxes );
 
+    // Grouping means fewer messages are printed than the log contained. Report
+    // both whenever they differ, so the tally still matches the log and the gap
+    // is explained rather than silently swallowed.
+    int shownErrors, shownWarnings, shownBadBoxes;
+    of.getShownCount( &shownErrors, &shownWarnings, &shownBadBoxes );
+
     if ( pretty ) {
-	cout << renderSummary(errors, warnings, badboxes, opts);
+	cout << renderSummary(errors, warnings, badboxes,
+			      shownErrors, shownWarnings, shownBadBoxes, opts);
     } else {
 	cout << "Result: o) Errors: " << errors << ", Warnings: " << warnings << ", BadBoxes: " << badboxes << endl;
     }
