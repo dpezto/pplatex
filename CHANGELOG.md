@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.2.0](https://github.com/dpezto/pplatex/compare/v1.1.0...v1.2.0) (2026-07-31)
+
+
+### Features
+
+* **filter:** record which packages and classes the document loaded ([d26a3c7](https://github.com/dpezto/pplatex/commit/d26a3c74f34f53acdb3c3a882f866172431833be))
+* **filter:** recover the source line and column from TeX's error context ([9351950](https://github.com/dpezto/pplatex/commit/93519502cf68c75e118d9484fd5cc11922bfcd49))
+* **filter:** report a mistake once, with what followed from it ([e3def2a](https://github.com/dpezto/pplatex/commit/e3def2a8eb3c42cb45e14b9de2d1d238e47cee24))
+* **hints:** say what to do about a message, and only when it is known ([5417f0a](https://github.com/dpezto/pplatex/commit/5417f0a81139aa6a7cc91f69234170a5371120e8))
+* **output:** add presentation options and keep the untrimmed log line ([0482e8e](https://github.com/dpezto/pplatex/commit/0482e8e6a3aae93d702278de06a1df1e39c35e2c))
+* **output:** render messages the way a compiler does ([dae5a99](https://github.com/dpezto/pplatex/commit/dae5a99029d2556bef2dd6ac0feff5fb9413692c))
+* readable diagnostics, verified hints, and one message per mistake ([b20f59a](https://github.com/dpezto/pplatex/commit/b20f59a0690966c8b5761b7b32fdc457d3e07ae5))
+
 ## [1.1.0](https://github.com/dpezto/pplatex/compare/v1.0.0...v1.1.0) (2026-07-30)
 
 
