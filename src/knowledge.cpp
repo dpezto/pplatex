@@ -548,6 +548,9 @@ int selfTestKnowledge()
 	    }
 	}
 
+	// Measured on the template. A hint that interpolates a capture can
+	// still come out wider once a long file name is substituted in, which
+	// the terminal wraps; there is no width to check against here.
 	if ( strlen(HINTS[i].first) > MAX_HINT_WIDTH
 	     || strlen(HINTS[i].second) > MAX_HINT_WIDTH ) {
 	    cerr << id << ": hint line over " << MAX_HINT_WIDTH << " columns" << endl;

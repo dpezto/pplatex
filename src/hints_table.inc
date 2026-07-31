@@ -300,7 +300,7 @@ static const struct {
   "Font shape `U/ulsy/m/n' undefined" },
 
 { "no-file", LatexOutputInfo::itmWarning, "", 'R', "^No file (.+)", CONF_LIKELY,
-  "LaTeX will create \\1 on this run. If it is still missing after a",
+  "LaTeX creates \\1 on this run. If it is still missing after a",
   "second run, the file really is absent.",
   "No file chapter.aux" },
 

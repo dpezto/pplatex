@@ -1,7 +1,7 @@
 warning: No file test.aux
  --> test.tex
   |
-  = likely: LaTeX will create test.aux on this run. If it is still missing after a
+  = likely: LaTeX creates test.aux on this run. If it is still missing after a
             second run, the file really is absent.
 
 error: Missing $ inserted

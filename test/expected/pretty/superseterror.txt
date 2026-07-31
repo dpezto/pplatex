@@ -18,7 +18,7 @@ warning[hyperref]: Token not allowed in a PDFDocEncoded string, removing `\new@i
 warning: No file presentation.nav
  --> /home/.../TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex
   |
-  = likely: LaTeX will create presentation.nav on this run. If it is still missing after a
+  = likely: LaTeX creates presentation.nav on this run. If it is still missing after a
             second run, the file really is absent.
 
 badbox: Overfull \hbox (2.84398pt too wide) in paragraph
