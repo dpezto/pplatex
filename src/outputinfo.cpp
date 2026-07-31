@@ -40,6 +40,21 @@ void LatexOutputInfo::clear()
     m_nErrorID = -1;
     m_msgClass.clear();
     m_package.clear();
+    m_srcContext = TexContext();
+    m_hasSrcContext = false;
+    m_nSrcColumn = -1;
+    m_trace.clear();
+}
+
+void LatexOutputInfo::setSourceContext(const TexContext& context)
+{
+    m_srcContext = context;
+    m_hasSrcContext = true;
+
+    // The column is the width of the text TeX had consumed, counting from 1.
+    // Where TeX clipped the line to fit, that width measures the clipped text
+    // and means nothing in the real file, so report no column at all.
+    m_nSrcColumn = context.windowed ? -1 : (int)context.before.length() + 1;
 }
 
 bool LatexOutputInfo::isValid() const

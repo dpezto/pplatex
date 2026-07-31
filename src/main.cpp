@@ -100,6 +100,7 @@ class ArgParser {
 	    charset = CHARSET_ASCII;
 	    paths = PATH_SHORT;
 	    width = 0;
+	    debugmodel = false;
 
 	    readEnvironment();
 	    parseArguments();
@@ -165,6 +166,10 @@ class ArgParser {
 	    return width;
 	}
 
+	bool debugModel() {
+	    return debugmodel;
+	}
+
     private:
 	int argc;
 	char** argv;
@@ -184,6 +189,7 @@ class ArgParser {
 	CharsetMode charset;
 	PathMode paths;
 	int width;
+	bool debugmodel;
 
 	/**
 	 * Presentation defaults, for setting once in a shell profile. Command
@@ -216,6 +222,7 @@ class ArgParser {
 	    int quietopt = 0;
 	    int bbopt = 0;
 	    int formatopt = 0, coloropt = 0, charsetopt = 0, pathsopt = 0, widthopt = 0;
+	    int debugopt = 0;
 	    string formatval, colorval, charsetval, pathsval, widthval;
 
 	    string name = programName(argv[0]);
@@ -277,6 +284,10 @@ class ArgParser {
 		else if ( !widthopt && optionValue(arg, "--width", widthval) ) {
 		    widthopt = i;
 		}
+		// Undocumented: dump the parsed structure instead of rendering it.
+		else if ( !debugopt && arg == "--debug-model" ) {
+		    debugopt = i;
+		}
 	    }
 	    
 	    if (help || version) {
@@ -319,6 +330,9 @@ class ArgParser {
 	    }
 	    if ( pathsopt && pathsopt < options && !parsePathMode(pathsval, paths) ) {
 		badValue("--paths", pathsval);
+	    }
+	    if ( debugopt && debugopt < options ) {
+		debugmodel = true;
 	    }
 	    if ( widthopt && widthopt < options ) {
 		width = atoi(widthval.c_str());
@@ -513,6 +527,8 @@ int main(int argc, char** argv) {
     }
 
     LatexOutputFilter of(parser.getSourcefile(), parser.isVerbose(), parser.noBadBoxes() || parser.isQuiet(), parser.isQuiet());
+
+    of.setDebugModel(parser.debugModel());
 
     of.run(fp);
 

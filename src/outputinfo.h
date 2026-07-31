@@ -21,6 +21,38 @@
 #define OUTPUTINFO_H
 
 #include <string>
+#include <vector>
+
+/**
+ * One of the two-line blocks TeX prints to show where it stopped reading.
+ *
+ *     l.3 \zzz
+ *             {aa}
+ *
+ * The first line carries a tag and the text TeX had already consumed; the
+ * second is padded out to exactly the width of the first. Splitting the pair
+ * apart therefore recovers both the source line -- "\zzz" + "{aa}" is what
+ * min.tex line 3 actually says -- and the column TeX stopped at, which is the
+ * width of everything before the padding ends.
+ *
+ * The same shape carries the expansion trace, tagged "<recently read> " or
+ * "\Gm@lmargin ->" instead of "l.<n> ".
+ **/
+struct TexContext
+{
+	TexContext() : srcLine(-1), windowed(false) {}
+
+	/** "l.3 ", "<recently read> ", "\Gm@lmargin ->" */
+	std::string tag;
+	/** Text to the left of the point TeX stopped at. */
+	std::string before;
+	/** Text to the right of it, empty when TeX printed no continuation. */
+	std::string after;
+	/** Line number carried by an "l.<n>" tag, -1 for a trace frame. */
+	int srcLine;
+	/** TeX clipped the line to fit its own width, so the column is a guess. */
+	bool windowed;
+};
 
 /**
  * A single message parsed out of the LaTeX output, and the formatting of that
@@ -64,6 +96,25 @@ class LatexOutputInfo
 
 	/** Line number in source file of the current message */
 	void setSourceLine(int line) { m_nSrcLine =  line; }
+	/** Line number in source file of the current message, -1 if unknown. */
+	int sourceLine() const { return m_nSrcLine; }
+
+	/**
+	 * Column TeX stopped at, counting from 1, or -1 when it cannot be
+	 * trusted. Derived from the width of the context, so it is only as good
+	 * as the context: a line TeX clipped to fit its own output width gives
+	 * a column into the clipped text, which would send an editor to the
+	 * wrong place. Those report -1 instead.
+	 **/
+	int sourceColumn() const { return m_nSrcColumn; }
+
+	bool hasSourceContext() const { return m_hasSrcContext; }
+	const TexContext& sourceContext() const { return m_srcContext; }
+	void setSourceContext(const TexContext& context);
+
+	/** Expansion frames, outermost first, as TeX printed them. */
+	const std::vector<TexContext>& trace() const { return m_trace; }
+	void addTrace(const TexContext& context) { m_trace.push_back(context); }
 
 	/** Error message */
 	const std::string message() const { return m_strError; }
@@ -102,6 +153,11 @@ class LatexOutputInfo
 	std::string m_package;
 	int m_nOutputLine;
 	int m_nErrorID;
+
+	TexContext m_srcContext;
+	bool m_hasSrcContext;
+	int m_nSrcColumn;
+	std::vector<TexContext> m_trace;
 };
 
 #endif

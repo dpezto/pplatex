@@ -59,6 +59,13 @@ class LatexOutputFilter
         /** Read the compiler output and print every message found in it. */
         bool run(FILE *out);
 
+	/**
+	Dump the structured item rather than rendering it. Undocumented option,
+	used to pin down what the parser understood without waiting for a
+	renderer to show it.
+	*/
+	void setDebugModel(bool debug) { m_debugModel = debug; }
+
 	enum {Start = 0, FileName, FileNameHeuristic, Error, Warning, BadBox, LineNumber};
 
     protected:
@@ -87,6 +94,27 @@ class LatexOutputFilter
 
 	/** Print the held-back item, if any, and empty the slot. */
 	void releasePending();
+
+	/**
+	Watch the raw line for one half of a TeX error context and pair it with
+	the half before it.
+
+	Runs ahead of the detectors and never consumes anything: it only reads
+	m_rawLine and fills in fields nothing else touches, so the messages the
+	detectors build are unaffected either way.
+	*/
+	void observeContext();
+
+	/** Hand a completed context to whichever item it belongs to. */
+	void storeContext(TexContext& context);
+
+	/**
+	The item a context should attach to: the one being parsed, or else the
+	one just completed. An "l.<n>" line is what tells the parser an error
+	is over, so by the time its other half arrives the item has already
+	been finished and handed to the pending slot.
+	*/
+	LatexOutputInfo* contextTarget();
 
         // overridings
     public:
@@ -173,6 +201,13 @@ class LatexOutputFilter
 
 	/** Whether the held-back item passed the -q/-b filter and will be printed. */
 	bool m_pendingVisible;
+
+	/** First half of a context block, waiting for the padded line below it. */
+	TexContext m_ctxHead;
+	size_t m_ctxHeadWidth;
+	bool m_hasCtxHead;
+
+	bool m_debugModel;
 
 };
 #endif

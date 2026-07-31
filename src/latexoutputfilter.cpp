@@ -129,7 +129,10 @@ LatexOutputFilter::LatexOutputFilter(const string& source, int verbose, bool nob
     m_nobadboxes(nobadboxes),
     m_quiet(quiet),
     m_hasPending(false),
-    m_pendingVisible(false)
+    m_pendingVisible(false),
+    m_ctxHeadWidth(0),
+    m_hasCtxHead(false),
+    m_debugModel(false)
 {
     // TODO maybe use better method to handle also escaped chars in filename
     size_t pos = source.find_last_of("/\\");
@@ -422,6 +425,126 @@ void LatexOutputFilter::flushCurrentItem()
     m_currentItem.clear();
 }
 
+/**
+ * Longest line TeX will print before clipping. Beyond this the context is a
+ * window into the source rather than the whole of it, and the column derived
+ * from it does not point anywhere real.
+ */
+static const size_t MAX_TEX_LINE = 79;
+
+/** How far past an item a context may still arrive and be counted as its own. */
+static const int CONTEXT_WINDOW = 12;
+
+/**
+ * Recognise the first line of a context block and split off its tag.
+ *
+ * Three shapes carry one: the source echo "l.<n> ", the reader markers
+ * "<recently read> " and friends, and a macro expansion "\foo ->". Everything
+ * after the tag is text TeX had already consumed.
+ */
+static bool splitContextHead(const string& raw, TexContext& context)
+{
+	static Regex reSourceEcho("^l\\.([0-9]+)( |$)");
+	static Regex reMarker("^<[a-zA-Z ]+> ");
+	static Regex reExpansion("^\\\\[A-Za-z@]+( #[0-9])* *->");
+
+	if ( reSourceEcho.match(raw) ) {
+		context.tag = reSourceEcho.getMatch(raw, 0);
+		context.srcLine = parseInt(reSourceEcho.getMatch(raw, 1));
+	}
+	else if ( reMarker.match(raw) ) {
+		context.tag = reMarker.getMatch(raw, 0);
+	}
+	else if ( reExpansion.match(raw) ) {
+		context.tag = reExpansion.getMatch(raw, 0);
+	}
+	else {
+		return false;
+	}
+
+	context.before = raw.substr(context.tag.length());
+
+	return true;
+}
+
+LatexOutputInfo* LatexOutputFilter::contextTarget()
+{
+	if ( m_currentItem.isValid() && m_currentItem.type() == LatexOutputInfo::itmError ) {
+		return &m_currentItem;
+	}
+
+	if ( m_hasPending && m_pendingItem.type() == LatexOutputInfo::itmError
+	     && GetCurrentOutputLine() - m_pendingItem.outputLine() <= CONTEXT_WINDOW ) {
+		return &m_pendingItem;
+	}
+
+	return 0;
+}
+
+void LatexOutputFilter::storeContext(TexContext& context)
+{
+	LatexOutputInfo *target = contextTarget();
+
+	if ( !target ) {
+		return;
+	}
+
+	// TeX marks text it clipped with an ellipsis, and clips at all only when
+	// the line would not fit. Either way what is left is a window, not the
+	// line, so the column derived from it cannot be trusted.
+	context.windowed =
+	    context.tag.length() + context.before.length() + context.after.length() >= MAX_TEX_LINE
+	    || context.before.compare(0, 3, "...") == 0
+	    || (context.after.length() >= 3
+		&& context.after.compare(context.after.length()-3, 3, "...") == 0);
+
+	if ( context.srcLine >= 0 ) {
+		target->setSourceContext(context);
+	} else {
+		target->addTrace(context);
+	}
+}
+
+void LatexOutputFilter::observeContext()
+{
+	if ( m_hasCtxHead ) {
+		size_t indent = m_rawLine.find_first_not_of(' ');
+		if ( indent == string::npos ) {
+			indent = m_rawLine.length();
+		}
+
+		if ( indent == m_ctxHeadWidth ) {
+			// Padded to the exact width of the line above: this is the
+			// rest of the source line, and the pair is complete.
+			m_ctxHead.after = m_rawLine.substr(indent);
+			m_hasCtxHead = false;
+			storeContext(m_ctxHead);
+			return;
+		}
+
+		// No continuation, so TeX printed nothing past the error. Keep the
+		// half we have, then let this line open a block of its own.
+		m_hasCtxHead = false;
+		storeContext(m_ctxHead);
+	}
+
+	TexContext head;
+
+	if ( !splitContextHead(m_rawLine, head) ) {
+		return;
+	}
+
+	// Only start tracking when there is something to attach to, so a log full
+	// of prose that happens to look like a context cannot accumulate state.
+	if ( contextTarget() == 0 ) {
+		return;
+	}
+
+	m_ctxHead = head;
+	m_ctxHeadWidth = m_rawLine.length();
+	m_hasCtxHead = true;
+}
+
 void LatexOutputFilter::emitItem(const LatexOutputInfo& item, bool visible)
 {
     releasePending();
@@ -431,13 +554,50 @@ void LatexOutputFilter::emitItem(const LatexOutputInfo& item, bool visible)
     m_hasPending = true;
 }
 
+/**
+ * Print what the parser understood, one field per line. Strings are bracketed
+ * because the interesting part of a context is often the whitespace.
+ */
+static void debugDump(LatexOutputInfo& item)
+{
+    static const char *severity[] = { "none", "error", "warning", "badbox" };
+
+    int type = item.type();
+
+    cout << "item" << endl;
+    cout << "  severity  " << (type >= 0 && type <= 3 ? severity[type] : "?") << endl;
+    cout << "  file      " << item.source() << endl;
+    cout << "  line      " << item.sourceLine() << endl;
+    cout << "  column    " << item.sourceColumn() << endl;
+    cout << "  message   [" << item.message() << "]" << endl;
+
+    if ( item.hasSourceContext() ) {
+	const TexContext& context = item.sourceContext();
+	cout << "  context   tag=[" << context.tag << "] before=[" << context.before
+	     << "] after=[" << context.after << "] windowed="
+	     << (context.windowed ? 1 : 0) << endl;
+	cout << "  recovered [" << context.before << context.after << "]" << endl;
+    }
+
+    for (size_t i = 0; i < item.trace().size(); i++) {
+	const TexContext& frame = item.trace()[i];
+	cout << "  trace[" << i << "]  tag=[" << frame.tag << "] before=["
+	     << frame.before << "] after=[" << frame.after << "]" << endl;
+    }
+
+    cout << endl;
+}
+
 void LatexOutputFilter::releasePending()
 {
     if ( !m_hasPending ) {
 	return;
     }
 
-    if ( m_pendingVisible ) {
+    if ( m_debugModel ) {
+	debugDump(m_pendingItem);
+    }
+    else if ( m_pendingVisible ) {
 	cout << m_pendingItem.getMessage();
     }
 
@@ -784,6 +944,10 @@ short LatexOutputFilter::parseLine(const string & strLine, short dwCookie)
 {
 	//KILE_DEBUG() << "==LatexOutputFilter::parseLine(" << strLine << dwCookie << strLine.length() << ")================" << endl;
 
+	// Ahead of the detectors, because an "l.<n>" line is both the second half
+	// of a context block and the signal that ends the error it belongs to.
+	observeContext();
+
 	switch (dwCookie) {
 		case Start :
 			if(!(detectBadBox(strLine, dwCookie) || detectWarning(strLine, dwCookie)
@@ -827,6 +991,8 @@ bool LatexOutputFilter::run(FILE *out)
 	m_hasPending = false;
 	m_pendingVisible = false;
 	m_pendingItem.clear();
+	m_hasCtxHead = false;
+	m_ctxHeadWidth = 0;
 	while (!m_stackFile.empty()) {
 	    m_stackFile.pop();
 	}
