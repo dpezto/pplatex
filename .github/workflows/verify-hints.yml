@@ -1,7 +1,6 @@
 name: verify-hints
 
-# Re-check every "this command comes from this package" claim in src/symbols.inc
-# against a real TeX Live.
+# Re-check the claims in src/symbols.inc against a real TeX Live.
 #
 # This runs on its own schedule rather than as part of CI because it needs a
 # 4 GB distribution, and the ordinary build must never need one: the release
@@ -11,6 +10,12 @@ name: verify-hints
 # A claim can rot without anything in this repository changing -- a package
 # moves a command into the kernel, or drops it -- so the check is scheduled
 # rather than only run on push.
+#
+# What is checked is that every committed claim still holds, not that the table
+# matches what this distribution would produce. Those are different: the table
+# is generated from whatever TeX Live the author had, and a fuller installation
+# legitimately offers more commands than a smaller one. Demanding a byte match
+# would fail for the wrong reason and teach everyone to ignore the job.
 
 on:
   schedule:
@@ -32,28 +37,31 @@ jobs:
     steps:
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
 
-      - name: Mine the distribution
-        run: tools/mine-cs.sh > cs-index.tsv
-
-      - name: Check every claim compiles as advertised
-        run: tools/verify-hints.sh tools/symbols.tsv cs-index.tsv | tee verify.out
-
-      - name: Confirm the committed table matches what verification allows
+      # Read the committed table back out as claims, so what gets checked is
+      # exactly what ships rather than whatever a fresh scrape turns up.
+      - name: Recover the committed claims
         run: |
-          tools/gen-symbols.py --curated tools/symbols.tsv --mined cs-index.tsv \
-              --verified verify.out --source "$(tex --version | head -1)" \
-              > symbols.new
-          # The generated header records the distribution it came from, so
-          # compare the entries rather than the whole file.
-          grep '^    { "' src/symbols.inc > committed.txt
-          grep '^    { "' symbols.new    > current.txt
-          if ! diff -u committed.txt current.txt; then
-            echo
-            echo "src/symbols.inc no longer matches this TeX Live."
-            echo "Regenerate it and read the diff before committing:"
-            echo "  tools/mine-cs.sh > cs-index.tsv"
-            echo "  tools/verify-hints.sh tools/symbols.tsv cs-index.tsv > verify.out"
-            echo "  tools/gen-symbols.py --curated tools/symbols.tsv \\"
-            echo "      --mined cs-index.tsv --verified verify.out > src/symbols.inc"
+          sed -n 's/^    { "\(\\\\[^"]*\)", [0-9]*  *},  \/\* \(.*\) \*\/$/\1\t\2/p' \
+              src/symbols.inc | sed 's/\\\\/\\/g' > committed.tsv
+          count=$(wc -l < committed.tsv | tr -d ' ')
+          echo "recovered $count claims from src/symbols.inc"
+          if [ "$count" -lt 100 ]; then
+            echo "That is far too few; the parser above no longer matches the file."
             exit 1
           fi
+
+      - name: Every committed claim must still hold
+        run: tools/verify-hints.sh committed.tsv
+
+      # Informational only. A fuller distribution than the one the table was
+      # built from will define commands it does not list, which is worth
+      # knowing about but is not a failure.
+      - name: Report commands this distribution could add
+        continue-on-error: true
+        run: |
+          tools/mine-cs.sh > cs-index.tsv
+          cut -f1 committed.tsv | sort -u > have.txt
+          cut -f1 cs-index.tsv  | sort -u > seen.txt
+          comm -13 have.txt seen.txt > extra.txt
+          echo "$(wc -l < extra.txt | tr -d ' ') commands are available here but not in the table:"
+          head -40 extra.txt

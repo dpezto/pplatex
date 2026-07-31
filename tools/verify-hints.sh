@@ -114,7 +114,9 @@ done
 
 cat "$work/failures"
 
-failed=$(grep -c . "$work/failures" 2>/dev/null || printf '0')
+# wc, not grep -c: grep exits non-zero when it matches nothing, so the ||
+# fallback would run as well and the count would come out as two lines.
+failed=$(wc -l < "$work/failures" | tr -d ' ')
 
 printf '\n%s claims checked, %s rejected\n' "$checked" "$failed"
 
