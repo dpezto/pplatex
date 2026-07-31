@@ -9,40 +9,45 @@ line they belong to, and nothing else.
 LaTeX can produce beautiful documents, and it produces some of the noisiest
 command-line output in computing while doing it. `pplatex` parses the log
 stream of latex, pdflatex or lualatex and reduces it to the messages you
-actually act on. It turns this
+actually act on.
+
+A document that uses `\includegraphics` without loading `graphicx` produces a
+104-line log, in which the three errors reported are all the same mistake:
 
 ```
-]
-\openout2 = `chapter.aux'.
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026)
+entering extended mode
 
+    ... 45 lines ...
 
-No file chapter.tex.
 ! Undefined control sequence.
-l.9 Something \unknown
+l.6 \includegraphics
+                    [width=\linewidth]{plot.pdf}
+The control sequence at the end of the top line
+of your error message was never \def'ed. If you have
+misspelled it (e.g., `\hobx'), type `I' and the correct
+
+    ... 50 lines ...
 ```
 
-into this
+`pplatex -i main.log` gives the whole of it:
 
 ```
-warning: No file chapter.tex
- --> ./test.tex
-  |
-  = likely: LaTeX creates chapter.tex on this run. If it is still missing after a
-            second run, the file really is absent.
-
 error: Undefined control sequence
- --> ./test.tex:9:11
+ --> ./main.tex:6:1
   |
-9 | Something \unknown
-  |           ^^^^^^^^
+6 | \includegraphics[width=\linewidth]{plot.pdf}
+  | ^^^^^^^^^^^^^^^^
   |
-  = likely: \unknown is not defined and is not a command we know.
-            Check the spelling, or define it with \newcommand in the preamble.
+  = caused: Missing number, treated as zero
+            Illegal unit of measure (pt inserted)
+            these go away when the error above is fixed
+  = hint: \includegraphics comes from graphicx. Add \usepackage{graphicx}.
 
-1 error, 1 warning, 0 badboxes
+1 error (3 reported), 0 warnings, 0 badboxes
 ```
 
-on a terminal, and the layout it has always printed when redirected — see
+That is on a terminal; redirected, it prints the layout it always has — see
 [Two layouts](#two-layouts).
 
 This is a maintained fork of
