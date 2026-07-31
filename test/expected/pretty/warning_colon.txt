@@ -1,0 +1,16 @@
+warning[hyperref]: Option `pdfpagelabels': turned off on input line 7
+ --> ./warning_colon.tex:7
+  |
+  = likely: hyperref could not read \thepage. Harmless unless you need PDF page
+            labels; load hyperref after anything that changes page numbering.
+
+warning[beamer]: Overwriting theme: default on input line 11
+  --> ./warning_colon.tex:11
+
+warning: Reference `sec:intro' on page 1 undefined on input line 15
+  --> ./warning_colon.tex:15
+   |
+   = hint: No \label{sec:intro} anywhere in the document. Add it or fix the key, then
+           rerun LaTeX.
+
+0 errors, 3 warnings, 0 badboxes

@@ -20,8 +20,11 @@
 #define LATEXOUTPUTFILTER_H
 
 #include "outputinfo.h"
+#include "knowledge.h"
+#include "render.h"
 
 #include <cstdio>
+#include <vector>
 #include <string>
 #include <stack>
 
@@ -59,6 +62,21 @@ class LatexOutputFilter
         /** Read the compiler output and print every message found in it. */
         bool run(FILE *out);
 
+	/**
+	Render messages the readable way rather than the classic way, using
+	<opts> for the terminal it is writing to.
+	*/
+	void setPretty(bool pretty, const RenderOpts& opts) { m_pretty = pretty; m_renderOpts = opts; }
+
+	/**
+	Report every repeat and every knock-on error separately, rather than
+	grouping them under the message that caused them.
+	*/
+	void setNoCollapse(bool off) { m_collapse = !off; }
+
+	/** Messages actually printed, which grouping makes fewer than the count. */
+	void getShownCount(int *errors, int *warnings, int *badboxes);
+
 	enum {Start = 0, FileName, FileNameHeuristic, Error, Warning, BadBox, LineNumber};
 
     protected:
@@ -73,6 +91,58 @@ class LatexOutputFilter
         Forwards the currently parsed item to the item list.
         */
         void flushCurrentItem();
+
+	/**
+	Hand a finished item to the output, one item behind.
+
+	TeX prints an error before the context that explains it, and in
+	file:line:error style the context arrives after the item has already
+	been completed. Holding the most recent item back by one lets that
+	context still be attached to the item it belongs to. Depth one is
+	enough: TeX never interleaves the contexts of two errors.
+	*/
+	void emitItem(const LatexOutputInfo& item, bool visible);
+
+	/** Print the held-back item, if any, and empty the slot. */
+	void releasePending();
+
+	/** Print one message, in whichever layout was asked for. */
+	void printItem(LatexOutputInfo& item);
+
+	/**
+	Group what was collected and print it.
+
+	Runs once the whole log has been read, because neither repeats nor
+	knock-on errors can be recognised from a single message.
+	*/
+	void emitAll();
+
+	/**
+	Watch the raw line for one half of a TeX error context and pair it with
+	the half before it.
+
+	Runs ahead of the detectors and never consumes anything: it only reads
+	m_rawLine and fills in fields nothing else touches, so the messages the
+	detectors build are unaffected either way.
+	*/
+	void observeContext();
+
+	/**
+	Note anything the line says about the document rather than about a
+	single message, such as a package finishing loading.
+	*/
+	void observeDocument(const std::string& strLine);
+
+	/** Hand a completed context to whichever item it belongs to. */
+	void storeContext(TexContext& context);
+
+	/**
+	The item a context should attach to: the one being parsed, or else the
+	one just completed. An "l.<n>" line is what tells the parser an error
+	is over, so by the time its other half arrives the item has already
+	been finished and handed to the pending slot.
+	*/
+	LatexOutputInfo* contextTarget();
 
         // overridings
     public:
@@ -130,6 +200,17 @@ class LatexOutputFilter
 	/** Length of the previous line, to check if we need a space in the next line */
 	size_t m_nLastLineLength;
 
+	/**
+	The line currently being parsed, with its leading whitespace intact.
+
+	parseLine() is handed a trimmed line, because every detector matches
+	from the first non-blank character. TeX's error context, though, encodes
+	the column it stopped at as the indent of the continuation line -- it
+	pads that line out to the exact width of the line above. Trimming
+	destroys the only copy of that information, so keep the original here.
+	*/
+	std::string m_rawLine;
+
 	bool m_nobadboxes;
 	bool m_quiet;
 
@@ -141,6 +222,32 @@ class LatexOutputFilter
 
         /** The item currently parsed. */
         LatexOutputInfo m_currentItem;
+
+	/** The last completed item, held back so that context can still reach it. */
+	LatexOutputInfo m_pendingItem;
+	bool m_hasPending;
+
+	/** Whether the held-back item passed the -q/-b filter and will be printed. */
+	bool m_pendingVisible;
+
+	/** First half of a context block, waiting for the padded line below it. */
+	TexContext m_ctxHead;
+	size_t m_ctxHeadWidth;
+	bool m_hasCtxHead;
+
+	/** What loaded, gathered over the whole log. */
+	DocContext m_doc;
+
+	/** Messages held for grouping, when not streaming. */
+	std::vector<LatexOutputInfo> m_items;
+
+	bool m_collapse;
+
+	/** How many messages survived grouping, for the summary. */
+	int m_nShownErrors, m_nShownWarnings, m_nShownBadBoxes;
+
+	bool m_pretty;
+	RenderOpts m_renderOpts;
 
 };
 #endif

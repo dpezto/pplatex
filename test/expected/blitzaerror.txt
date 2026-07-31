@@ -15,9 +15,6 @@
    Overfull \hbox (2.84398pt too wide) in paragraph
 
 ** Error   in /home/stefan/Documents/Uni/Vorlesungen/TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex, Line 292: 
-   Undefined control sequence \Contradiction ->\blitza  \end{frame}
-
-** Error   in /home/stefan/Documents/Uni/Vorlesungen/TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex, Line 312: 
-   Undefined control sequence \Contradiction ->\blitza  \end{frame}
+   Undefined control sequence \Contradiction ->\blitza  \end{frame} (x2)
 
 Result: o) Errors: 2, Warnings: 4, BadBoxes: 1

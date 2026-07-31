@@ -21,6 +21,38 @@
 #define OUTPUTINFO_H
 
 #include <string>
+#include <vector>
+
+/**
+ * One of the two-line blocks TeX prints to show where it stopped reading.
+ *
+ *     l.3 \zzz
+ *             {aa}
+ *
+ * The first line carries a tag and the text TeX had already consumed; the
+ * second is padded out to exactly the width of the first. Splitting the pair
+ * apart therefore recovers both the source line -- "\zzz" + "{aa}" is what
+ * min.tex line 3 actually says -- and the column TeX stopped at, which is the
+ * width of everything before the padding ends.
+ *
+ * The same shape carries the expansion trace, tagged "<recently read> " or
+ * "\Gm@lmargin ->" instead of "l.<n> ".
+ **/
+struct TexContext
+{
+	TexContext() : srcLine(-1), windowed(false) {}
+
+	/** "l.3 ", "<recently read> ", "\Gm@lmargin ->" */
+	std::string tag;
+	/** Text to the left of the point TeX stopped at. */
+	std::string before;
+	/** Text to the right of it, empty when TeX printed no continuation. */
+	std::string after;
+	/** Line number carried by an "l.<n>" tag, -1 for a trace frame. */
+	int srcLine;
+	/** TeX clipped the line to fit its own width, so the column is a guess. */
+	bool windowed;
+};
 
 /**
  * A single message parsed out of the LaTeX output, and the formatting of that
@@ -64,14 +96,66 @@ class LatexOutputInfo
 
 	/** Line number in source file of the current message */
 	void setSourceLine(int line) { m_nSrcLine =  line; }
+	/** Line number in source file of the current message, -1 if unknown. */
+	int sourceLine() const { return m_nSrcLine; }
+
+	/**
+	 * Column TeX stopped at, counting from 1, or -1 when it cannot be
+	 * trusted. Derived from the width of the context, so it is only as good
+	 * as the context: a line TeX clipped to fit its own output width gives
+	 * a column into the clipped text, which would send an editor to the
+	 * wrong place. Those report -1 instead.
+	 **/
+	int sourceColumn() const { return m_nSrcColumn; }
+
+	bool hasSourceContext() const { return m_hasSrcContext; }
+	const TexContext& sourceContext() const { return m_srcContext; }
+	void setSourceContext(const TexContext& context);
+
+	/**
+	 * How many times this message occurred, and on which other lines.
+	 *
+	 * Identical messages are reported once. The count is kept because
+	 * "this happened forty times" is information, and the lines are kept
+	 * because collapsing them away would lose the only thing that
+	 * distinguished them.
+	 **/
+	int occurrences() const { return m_occurrences; }
+	const std::vector<int>& otherLines() const { return m_otherLines; }
+	void addOccurrence(int line);
+
+	/**
+	 * Messages that only happened because this one did, as "<text> xN".
+	 * Kept under the message that caused them rather than reported
+	 * separately: fixing this one removes all of them.
+	 **/
+	const std::vector<std::string>& consequences() const { return m_consequences; }
+	void addConsequence(const std::string& text) { m_consequences.push_back(text); }
+
+	/** Expansion frames, outermost first, as TeX printed them. */
+	const std::vector<TexContext>& trace() const { return m_trace; }
+	void addTrace(const TexContext& context) { m_trace.push_back(context); }
 
 	/** Error message */
 	const std::string message() const { return m_strError; }
 
 	/** Error message */
-	void setMessage(const std::string& message) { m_strError = message; }
+	void setMessage(const std::string& message) { m_strError = message; m_headline = message; }
+
+	/**
+	 * What TeX actually complained about, without the context that follows
+	 * it. message() accumulates everything up to and including the "l.<n>"
+	 * echo, because that is the shape the classic output has always had;
+	 * the readable output shows the context separately and needs the
+	 * complaint on its own.
+	 **/
+	const std::string& headline() const { return m_headline; }
 
 	void setPackage(const std::string& msgClass, const std::string& package) { m_msgClass = msgClass; m_package = package; }
+	/** "Package", "Class", "LaTeX" or "pdfTeX" for a message that names one. */
+	const std::string& msgClass() const { return m_msgClass; }
+	/** The package or class that raised the message, empty if TeX itself did. */
+	const std::string& package() const { return m_package; }
 
 	/** Error code */
 	int type() const { return m_nErrorID; }
@@ -92,16 +176,34 @@ class LatexOutputInfo
 	/** The message as it is printed to the console, including a trailing blank line. */
 	std::string getMessage();
 
-	void addMessage(const std::string& msg, bool addSpace = true);
+	/**
+	 * Append a continuation line to the message.
+	 *
+	 * <headline> distinguishes the two kinds of line that arrive here: a
+	 * message LaTeX wrapped, which belongs to the complaint, and the error
+	 * context, which does not. Both are appended to message() so the
+	 * classic output is unchanged; only the former extends headline().
+	 **/
+	void addMessage(const std::string& msg, bool addSpace = true, bool headline = true);
 
     private:
 	std::string m_strSrcFile;
 	int m_nSrcLine;
 	std::string m_strError;
+	std::string m_headline;
 	std::string m_msgClass;
 	std::string m_package;
 	int m_nOutputLine;
 	int m_nErrorID;
+
+	int m_occurrences;
+	std::vector<int> m_otherLines;
+	std::vector<std::string> m_consequences;
+
+	TexContext m_srcContext;
+	bool m_hasSrcContext;
+	int m_nSrcColumn;
+	std::vector<TexContext> m_trace;
 };
 
 #endif

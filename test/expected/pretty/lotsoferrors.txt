@@ -1,0 +1,33 @@
+warning[pgf]: This package is obsolete and no longer needed on input line 13
+  --> <texmf>/tex/latex/pgf/basiclayer/pgfbaseimage.sty:13
+   |
+   = hint: Delete that \usepackage; pgf or tikz already provides it.
+
+warning[hyperref]: Option `pdfpagelabels' is turned off because \thepage is undefined
+ --> <texmf>/tex/latex/beamer/base/beamer.cls
+  |
+  = likely: hyperref could not read \thepage. Harmless unless you need PDF page
+            labels; load hyperref after anything that changes page numbering.
+
+error: Undefined control sequence (x126)
+  --> /home/stefan/Documents/Uni/DA/svn/thesis/presentations/final.tex:14:17
+   |
+14 | \begin{document}
+   |                 ^
+   |
+   = expanding: \Gm@lmargin ->\Geom@lmargin
+                              ^^^^^^^^^^^^^
+   = also at lines 20, 24, 35 and 7 more
+   = caused: Missing number, treated as zero x124
+             Illegal unit of measure (pt inserted) x124
+             these go away when the error above is fixed
+   = likely: \Geom@lmargin is beamer's internal macro, not yours.
+             That package is misconfigured, or the version installed is too old.
+
+badbox: Overfull \hbox (56.90549pt too wide) has occurred while \output is active (x20)
+ --> /home/stefan/Documents/Uni/DA/svn/thesis/presentations/final.tex
+  |
+  = hint: This happened while building the page, so there is no source line.
+          Look at the last float, header or footer on that page.
+
+1 error (374 reported), 2 warnings, 1 badbox (20 reported)

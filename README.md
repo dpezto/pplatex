@@ -24,13 +24,26 @@ l.9 Something \unknown
 into this
 
 ```
-** Warning in ./test.tex: No file chapter.tex.
+warning: No file chapter.tex
+ --> ./test.tex
+  |
+  = likely: LaTeX creates chapter.tex on this run. If it is still missing after a
+            second run, the file really is absent.
 
-** Error   in ./test.tex, Line 9:
-   Undefined control sequence Something \unknown
+error: Undefined control sequence
+ --> ./test.tex:9:11
+  |
+9 | Something \unknown
+  |           ^^^^^^^^
+  |
+  = likely: \unknown is not defined and is not a command we know.
+            Check the spelling, or define it with \newcommand in the preamble.
 
-Result: o) Errors: 1, Warnings: 1, BadBoxes: 0
+1 error, 1 warning, 0 badboxes
 ```
+
+on a terminal, and the layout it has always printed when redirected — see
+[Two layouts](#two-layouts).
 
 This is a maintained fork of
 [stefanhepp/pplatex](https://github.com/stefanhepp/pplatex). The
@@ -45,6 +58,19 @@ against the test suite in `test/`, and have all been offered upstream.
   nothing, hardened against the cases that break it: filenames wrapped across
   lines, directories with spaces, several files opened on one line, and page
   markers glued to a name.
+- **The source line, with a caret.** TeX prints where it stopped as a pair of
+  lines whose second is padded to the width of the first. That pair is the
+  source line and the column, so both are recovered and shown rather than
+  concatenated into the message.
+- **Advice, where it can be checked.** Undefined commands are resolved against
+  a table built by reading TeX Live and verified by compiling: every claim was
+  confirmed by a document that loads the package and one that does not, so a
+  command the kernel already provides can never be blamed on a package. Where
+  nothing is known, nothing is said.
+- **One mistake, reported once.** Repeats are counted rather than repeated, and
+  errors that only happened because of an earlier one are listed underneath it.
+  The bundled `lotsoferrors.log` goes from 374 errors over 1191 lines to four
+  messages over 33, because it only ever contained two mistakes.
 - **`file:line:error` style supported.** Logs produced with
   `-file-line-error` report errors as `./main.tex:3: ...`; these are parsed
   directly, taking the file and line the log already states.
@@ -143,10 +169,28 @@ Options:
 -v                 Be verbose
 -V, --version      Show version info
 -h, --help         Show this help
+
+--format=MODE      auto (default), pretty, classic
+--color=MODE       auto (default), always, never
+--width=N          Wrap the readable output at N columns
+--no-collapse      Report repeats and knock-on errors separately
+--self-test        Check the built-in hint tables and exit
 ```
 
 Do not pass an `-interaction` mode that stops to wait for input; pplatex uses
 `-interaction=nonstopmode` by default when none is given.
+
+### Two layouts
+
+`--format=auto`, the default, prints the readable layout above when the output
+is a terminal, and the original one-message-per-block layout whenever it is
+redirected or piped. That distinction exists because pplatex's output is
+parsed: VimTeX runs `pplatex -i <log> >tmp` and matches the classic layout
+column for column, so it has to stay put when something other than a person is
+reading it. Force either with `--format=pretty` or `--format=classic`.
+
+Grouping applies to both. `--no-collapse` turns it off and gives back exactly
+what v1.1.0 printed.
 
 ## Development
 

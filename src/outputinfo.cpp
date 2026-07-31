@@ -37,9 +37,45 @@ void LatexOutputInfo::clear()
     m_nSrcLine = -1;
     m_nOutputLine = -1;
     m_strError.clear();
+    m_headline.clear();
     m_nErrorID = -1;
     m_msgClass.clear();
     m_package.clear();
+    m_occurrences = 1;
+    m_otherLines.clear();
+    m_consequences.clear();
+    m_srcContext = TexContext();
+    m_hasSrcContext = false;
+    m_nSrcColumn = -1;
+    m_trace.clear();
+}
+
+void LatexOutputInfo::addOccurrence(int line)
+{
+    m_occurrences++;
+
+    // Only lines that are actually new, and only a few: a list of forty line
+    // numbers is not more useful than a list of three and a count.
+    if ( line <= 0 || line == m_nSrcLine ) {
+	return;
+    }
+    for (size_t i = 0; i < m_otherLines.size(); i++) {
+	if ( m_otherLines[i] == line ) {
+	    return;
+	}
+    }
+    m_otherLines.push_back(line);
+}
+
+void LatexOutputInfo::setSourceContext(const TexContext& context)
+{
+    m_srcContext = context;
+    m_hasSrcContext = true;
+
+    // The column is the width of the text TeX had consumed, counting from 1.
+    // Where TeX clipped the line to fit, that width measures the clipped text
+    // and means nothing in the real file, so report no column at all.
+    m_nSrcColumn = context.windowed ? -1 : (int)context.before.length() + 1;
 }
 
 bool LatexOutputInfo::isValid() const
@@ -48,7 +84,7 @@ bool LatexOutputInfo::isValid() const
 				  && m_strError.empty() && m_nErrorID == -1);
 }
 
-void LatexOutputInfo::addMessage(const string& msg, bool addSpace)
+void LatexOutputInfo::addMessage(const string& msg, bool addSpace, bool headline)
 {
     // Lines reach us with their trailing spaces intact, because the length of
     // an untrimmed line is what tells the filter whether latex wrapped a word.
@@ -82,6 +118,15 @@ void LatexOutputInfo::addMessage(const string& msg, bool addSpace)
 	m_strError = m_strError + (addSpace ? " " : "") + line;
     } else {
 	m_strError = m_strError + "\n   " + line;
+    }
+
+    // The headline is never wrapped: the readable renderer lets the terminal
+    // do that, and the classic one has its own wrapping above.
+    if (headline) {
+	if (!m_headline.empty() && addSpace) {
+	    m_headline += " ";
+	}
+	m_headline += line;
     }
 }
 
@@ -118,7 +163,17 @@ string LatexOutputInfo::getMessage()
 	msg << "(" << m_msgClass << " " << m_package << ") ";
     }
 
-    msg << m_strError << endl;
+    msg << m_strError;
+
+    if ( m_occurrences > 1 ) {
+	msg << " (x" << m_occurrences << ")";
+    }
+
+    msg << endl;
+
+    for (size_t i = 0; i < m_consequences.size(); i++) {
+	msg << "   caused: " << m_consequences[i] << endl;
+    }
 
     msg << endl;
 

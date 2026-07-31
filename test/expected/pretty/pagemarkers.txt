@@ -1,0 +1,10 @@
+error: Undefined control sequence
+  --> ./chapter.tex:42:1
+   |
+42 | \nosuch
+   | ^^^^^^^
+   |
+   = maybe: Nothing defines \nosuch. Did you mean \nsucc?
+            \nsucc needs \usepackage{amssymb}.
+
+1 error, 0 warnings, 0 badboxes

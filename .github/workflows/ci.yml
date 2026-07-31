@@ -49,6 +49,10 @@ jobs:
           cmake --build build
       - name: Fixture suite
         run: test/run.sh build/src/pplatex
+      # The hint tables are data, and the way they break is one entry quietly
+      # shadowing another as they grow. Nothing in the fixtures would notice.
+      - name: Hint tables
+        run: build/src/pplatex --self-test
       # The three entry points are one binary dispatching on argv[0]; a broken
       # install rule or symlink would pass every fixture and still ship a
       # ppluatex that does the wrong thing, so exercise the installed names.

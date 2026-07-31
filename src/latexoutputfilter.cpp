@@ -127,7 +127,16 @@ LatexOutputFilter::LatexOutputFilter(const string& source, int verbose, bool nob
     m_nWarnings(0),
     m_nBadBoxes(0),
     m_nobadboxes(nobadboxes),
-    m_quiet(quiet)
+    m_quiet(quiet),
+    m_hasPending(false),
+    m_pendingVisible(false),
+    m_ctxHeadWidth(0),
+    m_hasCtxHead(false),
+    m_collapse(true),
+    m_nShownErrors(0),
+    m_nShownWarnings(0),
+    m_nShownBadBoxes(0),
+    m_pretty(false)
 {
     // TODO maybe use better method to handle also escaped chars in filename
     size_t pos = source.find_last_of("/\\");
@@ -408,13 +417,297 @@ void LatexOutputFilter::flushCurrentItem()
 	default: break;
     }
 
-    // print message
-    if ( nItemType == LatexOutputInfo::itmError || (nItemType == LatexOutputInfo::itmWarning && !m_quiet) || 
-	(nItemType == LatexOutputInfo::itmBadBox && !m_nobadboxes) ) {
-	cout << m_currentItem.getMessage();
-    }
+    bool visible = nItemType == LatexOutputInfo::itmError
+		|| (nItemType == LatexOutputInfo::itmWarning && !m_quiet)
+		|| (nItemType == LatexOutputInfo::itmBadBox && !m_nobadboxes);
+
+    // Every item enters the slot, printable or not: the slot has to mean "the
+    // item most recently completed", or context following a suppressed warning
+    // would attach itself to whatever error came before it.
+    emitItem(m_currentItem, visible);
 
     m_currentItem.clear();
+}
+
+/**
+ * Longest line TeX will print before clipping. Beyond this the context is a
+ * window into the source rather than the whole of it, and the column derived
+ * from it does not point anywhere real.
+ */
+static const size_t MAX_TEX_LINE = 79;
+
+/** How far past an item a context may still arrive and be counted as its own. */
+static const int CONTEXT_WINDOW = 12;
+
+/**
+ * Recognise the first line of a context block and split off its tag.
+ *
+ * Three shapes carry one: the source echo "l.<n> ", the reader markers
+ * "<recently read> " and friends, and a macro expansion "\foo ->". Everything
+ * after the tag is text TeX had already consumed.
+ */
+static bool splitContextHead(const string& raw, TexContext& context)
+{
+	static Regex reSourceEcho("^l\\.([0-9]+)( |$)");
+	static Regex reMarker("^<[a-zA-Z ]+> ");
+	static Regex reExpansion("^\\\\[A-Za-z@]+( #[0-9])* *->");
+
+	if ( reSourceEcho.match(raw) ) {
+		context.tag = reSourceEcho.getMatch(raw, 0);
+		context.srcLine = parseInt(reSourceEcho.getMatch(raw, 1));
+	}
+	else if ( reMarker.match(raw) ) {
+		context.tag = reMarker.getMatch(raw, 0);
+	}
+	else if ( reExpansion.match(raw) ) {
+		context.tag = reExpansion.getMatch(raw, 0);
+	}
+	else {
+		return false;
+	}
+
+	context.before = raw.substr(context.tag.length());
+
+	return true;
+}
+
+LatexOutputInfo* LatexOutputFilter::contextTarget()
+{
+	if ( m_currentItem.isValid() && m_currentItem.type() == LatexOutputInfo::itmError ) {
+		return &m_currentItem;
+	}
+
+	if ( m_hasPending && m_pendingItem.type() == LatexOutputInfo::itmError
+	     && GetCurrentOutputLine() - m_pendingItem.outputLine() <= CONTEXT_WINDOW ) {
+		return &m_pendingItem;
+	}
+
+	return 0;
+}
+
+void LatexOutputFilter::storeContext(TexContext& context)
+{
+	LatexOutputInfo *target = contextTarget();
+
+	if ( !target ) {
+		return;
+	}
+
+	// TeX marks text it clipped with an ellipsis, and clips at all only when
+	// the line would not fit. Either way what is left is a window, not the
+	// line, so the column derived from it cannot be trusted.
+	context.windowed =
+	    context.tag.length() + context.before.length() + context.after.length() >= MAX_TEX_LINE
+	    || context.before.compare(0, 3, "...") == 0
+	    || (context.after.length() >= 3
+		&& context.after.compare(context.after.length()-3, 3, "...") == 0);
+
+	if ( context.srcLine >= 0 ) {
+		target->setSourceContext(context);
+	} else {
+		target->addTrace(context);
+	}
+}
+
+void LatexOutputFilter::observeDocument(const string& strLine)
+{
+	// LaTeX announces each file it has finished reading. The name is the one
+	// the author would write in \usepackage, which is what advice has to be
+	// checked against.
+	static Regex rePackage("^Package: ([^ ]+)");
+	static Regex reClass("^Document Class: ([^ ]+)");
+
+	if ( rePackage.match(strLine) ) {
+		m_doc.loadedPackages.insert(rePackage.getMatch(strLine, 1));
+	}
+	else if ( reClass.match(strLine) ) {
+		m_doc.loadedClasses.insert(reClass.getMatch(strLine, 1));
+	}
+}
+
+void LatexOutputFilter::observeContext()
+{
+	if ( m_hasCtxHead ) {
+		size_t indent = m_rawLine.find_first_not_of(' ');
+		if ( indent == string::npos ) {
+			indent = m_rawLine.length();
+		}
+
+		if ( indent == m_ctxHeadWidth ) {
+			// Padded to the exact width of the line above: this is the
+			// rest of the source line, and the pair is complete.
+			m_ctxHead.after = m_rawLine.substr(indent);
+			m_hasCtxHead = false;
+			storeContext(m_ctxHead);
+			return;
+		}
+
+		// No continuation, so TeX printed nothing past the error. Keep the
+		// half we have, then let this line open a block of its own.
+		m_hasCtxHead = false;
+		storeContext(m_ctxHead);
+	}
+
+	TexContext head;
+
+	if ( !splitContextHead(m_rawLine, head) ) {
+		return;
+	}
+
+	// Only start tracking when there is something to attach to, so a log full
+	// of prose that happens to look like a context cannot accumulate state.
+	if ( contextTarget() == 0 ) {
+		return;
+	}
+
+	m_ctxHead = head;
+	m_ctxHeadWidth = m_rawLine.length();
+	m_hasCtxHead = true;
+}
+
+/** Turn "Missing number, treated as zero" into "Missing number ... x40". */
+static string consequenceLine(const LatexOutputInfo& item)
+{
+    ostringstream text;
+
+    // The headline, not message(): the latter has the error context appended,
+    // which is what the classic layout has always printed but is noise here.
+    string headline = item.headline();
+    size_t end = headline.find_last_not_of(" \t.");
+    text << (end == string::npos ? headline : headline.substr(0, end+1));
+
+    if ( item.occurrences() > 1 ) {
+	text << " x" << item.occurrences();
+    }
+
+    return text.str();
+}
+
+void LatexOutputFilter::emitAll()
+{
+    // Which chains exist is decided on the raw messages, before any grouping.
+    // The window that says "this followed from that" was measured in log lines
+    // between neighbouring messages; once repeats are collapsed, the surviving
+    // pair can be hundreds of lines apart and the window would reject a chain
+    // that is plainly there.
+    vector<string> consequenceOf(m_items.size());
+
+    if ( m_collapse ) {
+	for (size_t i = 0; i < m_items.size(); i++) {
+	    for (size_t j = 0; j < i; j++) {
+		if ( isConsequenceOf(m_items[j], m_items[i]) ) {
+		    // Attach to the start of the chain, not the link before it,
+		    // so a consequence of a consequence still names the mistake.
+		    consequenceOf[i] = consequenceOf[j].empty()
+				     ? groupKey(m_items[j]) : consequenceOf[j];
+		    break;
+		}
+	    }
+	}
+    }
+
+    // Then collapse repeats. Everything that says the same thing in the same
+    // place is one finding, however many times TeX said it.
+    vector<string> keys;
+    vector<LatexOutputInfo> grouped;
+    vector<string> groupedFollows;
+
+    for (size_t i = 0; i < m_items.size(); i++) {
+	string key = groupKey(m_items[i]);
+	size_t found = keys.size();
+
+	// --no-collapse means every message stands on its own, so nothing is
+	// ever matched to an existing group.
+	for (size_t j = 0; m_collapse && j < keys.size(); j++) {
+	    if ( keys[j] == key ) {
+		found = j;
+		break;
+	    }
+	}
+
+	if ( found < keys.size() ) {
+	    grouped[found].addOccurrence(m_items[i].sourceLine());
+	} else {
+	    keys.push_back(key);
+	    grouped.push_back(m_items[i]);
+	    groupedFollows.push_back(consequenceOf[i]);
+	}
+    }
+
+    // Hang each chain under the message that started it. Fixing that one
+    // removes the rest, so reporting them separately only buries it.
+    vector<bool> demoted(grouped.size(), false);
+
+    for (size_t i = 0; i < grouped.size(); i++) {
+	if ( groupedFollows[i].empty() ) {
+	    continue;
+	}
+
+	for (size_t j = 0; j < grouped.size(); j++) {
+	    if ( j != i && keys[j] == groupedFollows[i] ) {
+		grouped[j].addConsequence(consequenceLine(grouped[i]));
+		demoted[i] = true;
+		break;
+	    }
+	}
+    }
+
+    for (size_t i = 0; i < grouped.size(); i++) {
+	if ( !demoted[i] ) {
+	    printItem(grouped[i]);
+	}
+    }
+
+    m_items.clear();
+}
+
+void LatexOutputFilter::getShownCount(int *errors, int *warnings, int *badboxes)
+{
+    *errors = m_nShownErrors;
+    *warnings = m_nShownWarnings;
+    *badboxes = m_nShownBadBoxes;
+}
+
+void LatexOutputFilter::printItem(LatexOutputInfo& item)
+{
+    switch (item.type()) {
+	case LatexOutputInfo::itmError:   m_nShownErrors++;   break;
+	case LatexOutputInfo::itmWarning: m_nShownWarnings++; break;
+	case LatexOutputInfo::itmBadBox:  m_nShownBadBoxes++; break;
+	default: break;
+    }
+
+    if ( m_pretty ) {
+	Annotation hint;
+	bool hasHint = annotate(item, m_doc, hint);
+	cout << renderPretty(item, m_renderOpts, hasHint ? &hint : 0);
+    } else {
+	cout << item.getMessage();
+    }
+}
+
+void LatexOutputFilter::emitItem(const LatexOutputInfo& item, bool visible)
+{
+    releasePending();
+
+    m_pendingItem = item;
+    m_pendingVisible = visible;
+    m_hasPending = true;
+}
+
+void LatexOutputFilter::releasePending()
+{
+    if ( !m_hasPending ) {
+	return;
+    }
+
+    if ( m_pendingVisible ) {
+	m_items.push_back(m_pendingItem);
+    }
+
+    m_pendingItem.clear();
+    m_hasPending = false;
+    m_pendingVisible = false;
 }
 
 bool LatexOutputFilter::detectError(const string & strLine, short &dwCookie)
@@ -473,9 +766,11 @@ bool LatexOutputFilter::detectError(const string & strLine, short &dwCookie)
 				flush = true;
 				//KILE_DEBUG() << "\tline number: " << reLineNumber.getMatch(strLine,1) << endl;
 				m_currentItem.setSourceLine(parseInt(reLineNumber.getMatch(strLine,1)));
-				// TODO Does latex wrap around into a new line that starts with 'l.'? Assuming it 
+				// TODO Does latex wrap around into a new line that starts with 'l.'? Assuming it
 				//      does not (we always add a space).
-				m_currentItem.addMessage(reLineNumber.getMatch(strLine,2));
+				// Context, not complaint: observeContext() has already
+				// taken this apart properly, so keep it out of the headline.
+				m_currentItem.addMessage(reLineNumber.getMatch(strLine,2), true, false);
 			}
 			else if(GetCurrentOutputLine() - m_currentItem.outputLine() > 10) {
 				dwCookie = Start;
@@ -483,7 +778,9 @@ bool LatexOutputFilter::detectError(const string & strLine, short &dwCookie)
 				cerr << "\tBAILING OUT: did not detect a TeX line number for an error" << endl;
 				m_currentItem.setSourceLine(0);
 			} else {
-				m_currentItem.addMessage(strLine, needsSpace());
+				// Everything between the complaint and the "l.<n>" echo is
+				// the expansion trace, which the headline does not want.
+				m_currentItem.addMessage(strLine, needsSpace(), false);
 			}
 		break;
 
@@ -755,6 +1052,11 @@ short LatexOutputFilter::parseLine(const string & strLine, short dwCookie)
 {
 	//KILE_DEBUG() << "==LatexOutputFilter::parseLine(" << strLine << dwCookie << strLine.length() << ")================" << endl;
 
+	// Ahead of the detectors, because an "l.<n>" line is both the second half
+	// of a context block and the signal that ends the error it belongs to.
+	observeContext();
+	observeDocument(strLine);
+
 	switch (dwCookie) {
 		case Start :
 			if(!(detectBadBox(strLine, dwCookie) || detectWarning(strLine, dwCookie)
@@ -794,6 +1096,16 @@ bool LatexOutputFilter::run(FILE *out)
 	m_nErrors = m_nWarnings = m_nBadBoxes = 0;
 	m_fileLineSource.clear();
 	m_nLastLineLength = 0;
+	m_hasPending = false;
+	m_pendingVisible = false;
+	m_pendingItem.clear();
+	m_rawLine.clear();
+	m_hasCtxHead = false;
+	m_ctxHeadWidth = 0;
+	m_doc.loadedPackages.clear();
+	m_doc.loadedClasses.clear();
+	m_items.clear();
+	m_nShownErrors = m_nShownWarnings = m_nShownBadBoxes = 0;
 	while (!m_stackFile.empty()) {
 	    m_stackFile.pop();
 	}
@@ -821,6 +1133,13 @@ bool LatexOutputFilter::run(FILE *out)
 		cerr << s;
 	    }
 
+	    // Keep the line as it arrived, minus the line ending. parseLine gets
+	    // a trimmed copy; the indent it throws away is what encodes the
+	    // column of a TeX error context.
+	    m_rawLine = s;
+	    size_t end = m_rawLine.find_last_not_of("\n\r");
+	    m_rawLine = (end == string::npos) ? "" : m_rawLine.substr(0, end+1);
+
 	    sCookie = parseLine(trim(s, false), sCookie);
 	    ++m_nOutputLines;
 
@@ -837,6 +1156,9 @@ bool LatexOutputFilter::run(FILE *out)
 	if ( m_currentItem.isValid() ) {
 	    flushCurrentItem();
 	}
+
+	releasePending();
+	emitAll();
 
 	return ret;
 }

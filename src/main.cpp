@@ -36,8 +36,28 @@
 #endif
 
 #include "latexoutputfilter.h"
+#include "style.h"
+#include "render.h"
+#include "knowledge.h"
 
 using namespace std;
+
+/**
+ * Match a "--name=value" option and hand back the value. Options that select
+ * between a fixed set of words take their value this way rather than as a
+ * separate argument, so that they can never be confused with a latex option.
+ */
+static bool optionValue(const string& arg, const char *name, string& value)
+{
+    string prefix = string(name) + "=";
+
+    if ( arg.length() <= prefix.length() || arg.compare(0, prefix.length(), prefix) != 0 ) {
+	return false;
+    }
+
+    value = arg.substr(prefix.length());
+    return true;
+}
 
 /**
  * Reduce argv[0] to the bare name pplatex was invoked as, so that the LaTeX
@@ -77,7 +97,12 @@ class ArgParser {
 	    version = false;
 	    quiet = false;
 	    nobadboxes = false;
-	    
+	    format = FORMAT_AUTO;
+	    color = COLOR_AUTO;
+	    width = 0;
+	    selftest = false;
+	    nocollapse = false;
+
 	    parseArguments();
 	}
 
@@ -120,7 +145,27 @@ class ArgParser {
 	bool noBadBoxes() {
 	    return nobadboxes;
 	}
-	
+
+	FormatMode getFormat() {
+	    return format;
+	}
+
+	ColorMode getColor() {
+	    return color;
+	}
+
+	int getWidth() {
+	    return width;
+	}
+
+	bool selfTest() {
+	    return selftest;
+	}
+
+	bool noCollapse() {
+	    return nocollapse;
+	}
+
     private:
 	int argc;
 	char** argv;
@@ -135,6 +180,17 @@ class ArgParser {
 	bool version;
 	bool quiet;
 	bool nobadboxes;
+	FormatMode format;
+	ColorMode color;
+	int width;
+	bool selftest;
+	bool nocollapse;
+
+	/** Reject an option value we do not understand rather than guess. */
+	void badValue(const string& option, const string& value) {
+	    cerr << "Invalid value for '" << option << "': " << value << endl;
+	    exit(2);
+	}
 
 	void parseArguments() {
 
@@ -145,6 +201,8 @@ class ArgParser {
 	    int inputopt = 0;
 	    int quietopt = 0;
 	    int bbopt = 0;
+	    int formatopt = 0, coloropt = 0, widthopt = 0, collapseopt = 0;
+	    string formatval, colorval, widthval;
 
 	    string name = programName(argv[0]);
 
@@ -190,9 +248,24 @@ class ArgParser {
 		else if ( !bbopt && (arg == "-b" || arg == "--nobadboxes" ) ) {
 		    bbopt = i;
 		}
+		else if ( !formatopt && optionValue(arg, "--format", formatval) ) {
+		    formatopt = i;
+		}
+		else if ( !coloropt && optionValue(arg, "--color", colorval) ) {
+		    coloropt = i;
+		}
+		else if ( !widthopt && optionValue(arg, "--width", widthval) ) {
+		    widthopt = i;
+		}
+		else if ( !collapseopt && arg == "--no-collapse" ) {
+		    collapseopt = i;
+		}
+		else if ( options == 1 && arg == "--self-test" ) {
+		    selftest = true;
+		}
 	    }
-	    
-	    if (help || version) {
+
+	    if (help || version || selftest) {
 		return;
 	    }
 
@@ -219,6 +292,22 @@ class ArgParser {
 	    }
 	    if ( bbopt && bbopt < options ) {
 		nobadboxes = true;
+	    }
+
+	    if ( formatopt && formatopt < options && !parseFormatMode(formatval, format) ) {
+		badValue("--format", formatval);
+	    }
+	    if ( coloropt && coloropt < options && !parseColorMode(colorval, color) ) {
+		badValue("--color", colorval);
+	    }
+	    if ( collapseopt && collapseopt < options ) {
+		nocollapse = true;
+	    }
+	    if ( widthopt && widthopt < options ) {
+		width = atoi(widthval.c_str());
+		if ( width <= 0 ) {
+		    badValue("--width", widthval);
+		}
 	    }
 
 	    if ( inputopt && inputopt < options ) {
@@ -311,6 +400,16 @@ static void usage(char* program) {
     cout << "    -V, --version      Show version info" << endl;
     cout << "    -h, --help         Show this help" << endl;
     cout << endl;
+    cout << "  output options:" << endl;
+    cout << "    --format=MODE      auto (default), pretty, classic" << endl;
+    cout << "    --color=MODE       auto (default), always, never" << endl;
+    cout << "    --width=N          Wrap the readable output at N columns" << endl;
+    cout << "    --self-test        Check the built-in hint tables and exit" << endl;
+    cout << "    --no-collapse      Report repeats and knock-on errors separately" << endl;
+    cout << endl;
+    cout << "  'auto' means the readable layout on a terminal and the classic one" << endl;
+    cout << "  everywhere else, so that redirected output stays machine readable." << endl;
+    cout << endl;
     cout << "  By default, if the program is called 'pplatex', 'latex' will be executed," << endl;
     cout << "  if it is called 'ppluatex' then 'lualatex' will be executed," << endl;
     cout << "  else 'pdflatex' will be used." << endl;
@@ -344,6 +443,10 @@ int main(int argc, char** argv) {
     if ( parser.showVersion() ) {
 	version();
 	return 0;
+    }
+
+    if ( parser.selfTest() ) {
+	return selfTestKnowledge() == 0 ? 0 : 1;
     }
 
     FILE *fp;
@@ -397,12 +500,32 @@ int main(int argc, char** argv) {
 
     LatexOutputFilter of(parser.getSourcefile(), parser.isVerbose(), parser.noBadBoxes() || parser.isQuiet(), parser.isQuiet());
 
+    bool pretty = wantPretty(parser.getFormat(), stdout);
+
+    RenderOpts opts;
+    opts.width   = terminalWidth(parser.getWidth(), stdout);
+    opts.color   = wantColor(parser.getColor(), stdout);
+
+    of.setPretty(pretty, opts);
+    of.setNoCollapse(parser.noCollapse());
+
     of.run(fp);
 
     int errors, warnings, badboxes;
     of.getErrorCount( &errors, &warnings, &badboxes );
 
-    cout << "Result: o) Errors: " << errors << ", Warnings: " << warnings << ", BadBoxes: " << badboxes << endl;
+    // Grouping means fewer messages are printed than the log contained. Report
+    // both whenever they differ, so the tally still matches the log and the gap
+    // is explained rather than silently swallowed.
+    int shownErrors, shownWarnings, shownBadBoxes;
+    of.getShownCount( &shownErrors, &shownWarnings, &shownBadBoxes );
+
+    if ( pretty ) {
+	cout << renderSummary(errors, warnings, badboxes,
+			      shownErrors, shownWarnings, shownBadBoxes, opts);
+    } else {
+	cout << "Result: o) Errors: " << errors << ", Warnings: " << warnings << ", BadBoxes: " << badboxes << endl;
+    }
 
     int status;
 
