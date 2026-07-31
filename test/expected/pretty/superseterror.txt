@@ -1,0 +1,31 @@
+warning[pgf]: This package is obsolete and no longer needed on input line 13
+  --> <texmf>/tex/latex/pgf/basiclayer/pgfbaseimage.sty:13
+
+warning[hyperref]: Option `pdfpagelabels' is turned off because \thepage is undefined
+ --> <texmf>/tex/latex/beamer/base/beamer.cls
+
+warning[hyperref]: Token not allowed in a PDFDocEncoded string, removing `\new@ifnextchar' on input line 48
+  --> /home/.../TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex:48
+
+warning: No file presentation.nav
+ --> /home/.../TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex
+
+badbox: Overfull \hbox (2.84398pt too wide) in paragraph
+   --> /home/.../TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex:203
+
+warning[Font]: Font shape `U/ulsy/m/n' in size <10.95> not available size <10> substituted on input line 291
+   --> /home/.../TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex:291
+
+error: Undefined control sequence
+   --> /home/.../TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex:355:12
+    |
+355 | \end{frame}
+    |            ^
+    |
+    = expanding: <recently read> \superseteq
+                                 ^^^^^^^^^^^
+
+warning[Font]: Size substitutions with differences up to 0.95pt have occurred
+ --> /home/.../TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex
+
+1 error, 6 warnings, 1 badbox

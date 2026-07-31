@@ -37,6 +37,7 @@
 
 #include "latexoutputfilter.h"
 #include "style.h"
+#include "render.h"
 
 using namespace std;
 
@@ -289,7 +290,7 @@ class ArgParser {
 		    debugopt = i;
 		}
 	    }
-	    
+
 	    if (help || version) {
 		return;
 	    }
@@ -528,14 +529,27 @@ int main(int argc, char** argv) {
 
     LatexOutputFilter of(parser.getSourcefile(), parser.isVerbose(), parser.noBadBoxes() || parser.isQuiet(), parser.isQuiet());
 
+    bool pretty = wantPretty(parser.getFormat(), stdout);
+
+    RenderOpts opts;
+    opts.width   = terminalWidth(parser.getWidth(), stdout);
+    opts.color   = wantColor(parser.getColor(), stdout);
+    opts.unicode = parser.getCharset() == CHARSET_UNICODE;
+    opts.paths   = parser.getPaths();
+
     of.setDebugModel(parser.debugModel());
+    of.setPretty(pretty, opts);
 
     of.run(fp);
 
     int errors, warnings, badboxes;
     of.getErrorCount( &errors, &warnings, &badboxes );
 
-    cout << "Result: o) Errors: " << errors << ", Warnings: " << warnings << ", BadBoxes: " << badboxes << endl;
+    if ( pretty ) {
+	cout << renderSummary(errors, warnings, badboxes, opts);
+    } else {
+	cout << "Result: o) Errors: " << errors << ", Warnings: " << warnings << ", BadBoxes: " << badboxes << endl;
+    }
 
     int status;
 

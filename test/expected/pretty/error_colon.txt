@@ -1,0 +1,13 @@
+error[biblatex]: File 'error_colon.bbl' not created: run biber
+  --> ./error_colon.tex:12:1
+   |
+12 | \printbibliography
+   | ^^^^^^^^^^^^^^^^^^
+
+error[beamer]: Overwriting theme: default is not allowed
+  --> ./error_colon.tex:20:1
+   |
+20 | \usetheme
+   | ^^^^^^^^^
+
+2 errors, 0 warnings, 0 badboxes

@@ -120,9 +120,22 @@ class LatexOutputInfo
 	const std::string message() const { return m_strError; }
 
 	/** Error message */
-	void setMessage(const std::string& message) { m_strError = message; }
+	void setMessage(const std::string& message) { m_strError = message; m_headline = message; }
+
+	/**
+	 * What TeX actually complained about, without the context that follows
+	 * it. message() accumulates everything up to and including the "l.<n>"
+	 * echo, because that is the shape the classic output has always had;
+	 * the readable output shows the context separately and needs the
+	 * complaint on its own.
+	 **/
+	const std::string& headline() const { return m_headline; }
 
 	void setPackage(const std::string& msgClass, const std::string& package) { m_msgClass = msgClass; m_package = package; }
+	/** "Package", "Class", "LaTeX" or "pdfTeX" for a message that names one. */
+	const std::string& msgClass() const { return m_msgClass; }
+	/** The package or class that raised the message, empty if TeX itself did. */
+	const std::string& package() const { return m_package; }
 
 	/** Error code */
 	int type() const { return m_nErrorID; }
@@ -143,12 +156,21 @@ class LatexOutputInfo
 	/** The message as it is printed to the console, including a trailing blank line. */
 	std::string getMessage();
 
-	void addMessage(const std::string& msg, bool addSpace = true);
+	/**
+	 * Append a continuation line to the message.
+	 *
+	 * <headline> distinguishes the two kinds of line that arrive here: a
+	 * message LaTeX wrapped, which belongs to the complaint, and the error
+	 * context, which does not. Both are appended to message() so the
+	 * classic output is unchanged; only the former extends headline().
+	 **/
+	void addMessage(const std::string& msg, bool addSpace = true, bool headline = true);
 
     private:
 	std::string m_strSrcFile;
 	int m_nSrcLine;
 	std::string m_strError;
+	std::string m_headline;
 	std::string m_msgClass;
 	std::string m_package;
 	int m_nOutputLine;

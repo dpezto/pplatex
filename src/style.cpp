@@ -34,6 +34,23 @@ static const int MAX_WIDTH = 120;
 /** Width used whenever the output is not a terminal, so tests are stable. */
 static const int DEFAULT_WIDTH = 80;
 
+static const Palette COLORED = {
+    "\033[1;31m",  /* error   */
+    "\033[1;33m",  /* warning */
+    "\033[1;34m",  /* badbox  */
+    "\033[1;34m",  /* rule    */
+    "\033[1m",     /* bold    */
+    "\033[2m",     /* dim     */
+    "\033[0m"      /* reset   */
+};
+
+static const Palette PLAIN = { "", "", "", "", "", "", "" };
+
+const Palette& palette(bool color)
+{
+    return color ? COLORED : PLAIN;
+}
+
 bool parseFormatMode(const string& value, FormatMode& mode)
 {
     if ( value == "auto" )    { mode = FORMAT_AUTO;    return true; }

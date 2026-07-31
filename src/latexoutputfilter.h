@@ -20,6 +20,7 @@
 #define LATEXOUTPUTFILTER_H
 
 #include "outputinfo.h"
+#include "render.h"
 
 #include <cstdio>
 #include <string>
@@ -65,6 +66,12 @@ class LatexOutputFilter
 	renderer to show it.
 	*/
 	void setDebugModel(bool debug) { m_debugModel = debug; }
+
+	/**
+	Render messages the readable way rather than the classic way, using
+	<opts> for the terminal it is writing to.
+	*/
+	void setPretty(bool pretty, const RenderOpts& opts) { m_pretty = pretty; m_renderOpts = opts; }
 
 	enum {Start = 0, FileName, FileNameHeuristic, Error, Warning, BadBox, LineNumber};
 
@@ -208,6 +215,8 @@ class LatexOutputFilter
 	bool m_hasCtxHead;
 
 	bool m_debugModel;
+	bool m_pretty;
+	RenderOpts m_renderOpts;
 
 };
 #endif

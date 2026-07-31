@@ -37,6 +37,7 @@ void LatexOutputInfo::clear()
     m_nSrcLine = -1;
     m_nOutputLine = -1;
     m_strError.clear();
+    m_headline.clear();
     m_nErrorID = -1;
     m_msgClass.clear();
     m_package.clear();
@@ -63,7 +64,7 @@ bool LatexOutputInfo::isValid() const
 				  && m_strError.empty() && m_nErrorID == -1);
 }
 
-void LatexOutputInfo::addMessage(const string& msg, bool addSpace)
+void LatexOutputInfo::addMessage(const string& msg, bool addSpace, bool headline)
 {
     // Lines reach us with their trailing spaces intact, because the length of
     // an untrimmed line is what tells the filter whether latex wrapped a word.
@@ -97,6 +98,15 @@ void LatexOutputInfo::addMessage(const string& msg, bool addSpace)
 	m_strError = m_strError + (addSpace ? " " : "") + line;
     } else {
 	m_strError = m_strError + "\n   " + line;
+    }
+
+    // The headline is never wrapped: the readable renderer lets the terminal
+    // do that, and the classic one has its own wrapping above.
+    if (headline) {
+	if (!m_headline.empty() && addSpace) {
+	    m_headline += " ";
+	}
+	m_headline += line;
     }
 }
 

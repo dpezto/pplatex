@@ -1,0 +1,9 @@
+warning: No file test.aux
+ --> test.tex
+
+error: Missing $ inserted
+  --> test.tex:10
+   |
+   = expanding: <inserted text>
+
+1 error, 1 warning, 0 badboxes

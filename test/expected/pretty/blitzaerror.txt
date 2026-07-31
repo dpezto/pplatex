@@ -1,0 +1,34 @@
+warning[pgf]: This package is obsolete and no longer needed on input line 13
+  --> <texmf>/tex/latex/pgf/basiclayer/pgfbaseimage.sty:13
+
+warning[hyperref]: Option `pdfpagelabels' is turned off because \thepage is undefined
+ --> <texmf>/tex/latex/beamer/base/beamer.cls
+
+warning[hyperref]: Token not allowed in a PDFDocEncoded string, removing `\new@ifnextchar' on input line 49
+  --> /home/.../TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex:49
+
+warning: No file presentation.nav
+ --> /home/.../TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex
+
+badbox: Overfull \hbox (2.84398pt too wide) in paragraph
+   --> /home/.../TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex:204
+
+error: Undefined control sequence
+   --> /home/.../TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex:292:12
+    |
+292 | \end{frame}
+    |            ^
+    |
+    = expanding: \Contradiction ->\blitza
+                                  ^^^^^^^
+
+error: Undefined control sequence
+   --> /home/.../TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex:312:12
+    |
+312 | \end{frame}
+    |            ^
+    |
+    = expanding: \Contradiction ->\blitza
+                                  ^^^^^^^
+
+2 errors, 4 warnings, 1 badbox

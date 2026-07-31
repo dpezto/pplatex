@@ -132,7 +132,8 @@ LatexOutputFilter::LatexOutputFilter(const string& source, int verbose, bool nob
     m_pendingVisible(false),
     m_ctxHeadWidth(0),
     m_hasCtxHead(false),
-    m_debugModel(false)
+    m_debugModel(false),
+    m_pretty(false)
 {
     // TODO maybe use better method to handle also escaped chars in filename
     size_t pos = source.find_last_of("/\\");
@@ -598,7 +599,11 @@ void LatexOutputFilter::releasePending()
 	debugDump(m_pendingItem);
     }
     else if ( m_pendingVisible ) {
-	cout << m_pendingItem.getMessage();
+	if ( m_pretty ) {
+	    cout << renderPretty(m_pendingItem, m_renderOpts);
+	} else {
+	    cout << m_pendingItem.getMessage();
+	}
     }
 
     m_pendingItem.clear();
@@ -662,9 +667,11 @@ bool LatexOutputFilter::detectError(const string & strLine, short &dwCookie)
 				flush = true;
 				//KILE_DEBUG() << "\tline number: " << reLineNumber.getMatch(strLine,1) << endl;
 				m_currentItem.setSourceLine(parseInt(reLineNumber.getMatch(strLine,1)));
-				// TODO Does latex wrap around into a new line that starts with 'l.'? Assuming it 
+				// TODO Does latex wrap around into a new line that starts with 'l.'? Assuming it
 				//      does not (we always add a space).
-				m_currentItem.addMessage(reLineNumber.getMatch(strLine,2));
+				// Context, not complaint: observeContext() has already
+				// taken this apart properly, so keep it out of the headline.
+				m_currentItem.addMessage(reLineNumber.getMatch(strLine,2), true, false);
 			}
 			else if(GetCurrentOutputLine() - m_currentItem.outputLine() > 10) {
 				dwCookie = Start;
@@ -672,7 +679,9 @@ bool LatexOutputFilter::detectError(const string & strLine, short &dwCookie)
 				cerr << "\tBAILING OUT: did not detect a TeX line number for an error" << endl;
 				m_currentItem.setSourceLine(0);
 			} else {
-				m_currentItem.addMessage(strLine, needsSpace());
+				// Everything between the complaint and the "l.<n>" echo is
+				// the expansion trace, which the headline does not want.
+				m_currentItem.addMessage(strLine, needsSpace(), false);
 			}
 		break;
 
@@ -987,10 +996,10 @@ bool LatexOutputFilter::run(FILE *out)
 	m_nErrors = m_nWarnings = m_nBadBoxes = 0;
 	m_fileLineSource.clear();
 	m_nLastLineLength = 0;
-	m_rawLine.clear();
 	m_hasPending = false;
 	m_pendingVisible = false;
 	m_pendingItem.clear();
+	m_rawLine.clear();
 	m_hasCtxHead = false;
 	m_ctxHeadWidth = 0;
 	while (!m_stackFile.empty()) {

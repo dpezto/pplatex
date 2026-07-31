@@ -27,6 +27,28 @@ enum ColorMode   { COLOR_AUTO, COLOR_ALWAYS, COLOR_NEVER };
 enum CharsetMode { CHARSET_ASCII, CHARSET_UNICODE };
 enum PathMode    { PATH_SHORT, PATH_FULL };
 
+/**
+ * Escape sequences the renderer writes, or empty strings when color is off.
+ * Keeping them behind a table means the renderer has one code path and stays
+ * a pure function of its inputs, so its output can be compared byte for byte.
+ */
+struct Palette
+{
+	const char *error;
+	const char *warning;
+	const char *badbox;
+	/** The '-->', '|' and '=' rules that frame a message. */
+	const char *rule;
+	/** Emphasis for the text of a message. */
+	const char *bold;
+	/** De-emphasis for detail nobody has to read. */
+	const char *dim;
+	const char *reset;
+};
+
+/** The colored table, or an all-empty one when <color> is false. */
+const Palette& palette(bool color);
+
 /** Parse an option value. Returns false and leaves <mode> alone if unknown. */
 bool parseFormatMode(const std::string& value, FormatMode& mode);
 bool parseColorMode(const std::string& value, ColorMode& mode);
