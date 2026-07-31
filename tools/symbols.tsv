@@ -1,0 +1,120 @@
+# Hand written command -> package claims. Wins over anything tools/mine-cs.sh
+# scrapes, and is where a claim goes that the scrape cannot make.
+#
+# Two kinds of entry belong here.
+#
+#   Commands defined with \def or \protected\def, which mine-cs.sh does not
+#   read, because reading \def as well drags in a thousand package internals.
+#   \includegraphics, \toprule and \mathbb are all in this group and are all
+#   among the commands authors most often forget to load a package for.
+#
+#   Commands more than one package declares, where the scrape cannot say which
+#   one an author meant. \square and \lozenge are both amssymb and marvosym;
+#   amssymb is the answer in every document that is not about symbol fonts.
+#
+# Every claim here is checked by tools/verify-hints.sh, which compiles a
+# document with the package and one without it. A command the kernel already
+# provides fails that check and must not be listed.
+#
+# Format: <command><TAB><package>
+
+# --- graphics: \def forms the scrape cannot see
+\includegraphics	graphicx
+\graphicspath	graphicx
+\rotatebox	graphicx
+\scalebox	graphicx
+\resizebox	graphicx
+
+# --- booktabs: all \def
+\toprule	booktabs
+\midrule	booktabs
+\bottomrule	booktabs
+\cmidrule	booktabs
+\addlinespace	booktabs
+
+# --- amsfonts / amssymb blackboard and fraktur
+\mathbb	amsfonts
+\mathfrak	amsfonts
+
+# --- amsmath environments and operators reached through \def
+\text	amsmath
+\intertext	amsmath
+\substack	amsmath
+\shortintertext	mathtools
+
+# --- disputed between amssymb and a symbol font package; amssymb is meant
+\square	amssymb
+\lozenge	amssymb
+\blacksquare	amssymb
+\checkmark	amssymb
+
+# --- siunitx v3 spellings, which the v2 compatibility layer also declares
+\qty	siunitx
+\unit	siunitx
+\num	siunitx
+\si	siunitx
+
+# --- hyperref, defined with \def behind option processing
+\href	hyperref
+\url	hyperref
+\hyperref	hyperref
+\autoref	hyperref
+
+# --- cleveref, worth naming because \cref is easily mistaken for a kernel form
+\cref	cleveref
+\Cref	cleveref
+\crefname	cleveref
+
+# --- tabular extensions
+\multirow	multirow
+
+# --- listings and verbatim-alikes
+\lstinline	listings
+\lstinputlisting	listings
+\lstset	listings
+
+# --- bibliography, where the two families disagree and the log names which
+\citep	natbib
+\citet	natbib
+\textcite	biblatex
+\parencite	biblatex
+\autocite	biblatex
+\addbibresource	biblatex
+\printbibliography	biblatex
+
+# --- colour
+\textcolor	xcolor
+\colorbox	xcolor
+\definecolor	xcolor
+
+# --- lists
+\setlist	enumitem
+
+# --- floats and captions
+\captionof	caption
+\subcaptionbox	subcaption
+\FloatBarrier	placeins
+
+# --- tikz / pgf, where the package name is not the file the author loads
+\tikz	tikz
+\usetikzlibrary	tikz
+\pgfplotsset	pgfplots
+
+# --- units and physics notation
+\SI	siunitx
+\bra	braket
+\ket	braket
+\braket	braket
+\dv	physics
+\pdv	physics
+
+# --- misc commonly forgotten
+\cancel	cancel
+\sout	ulem
+\uline	ulem
+\nicefrac	nicefrac
+\bm	bm
+\coloneqq	mathtools
+\DeclarePairedDelimiter	mathtools
+\mathclap	mathtools
+\adjustbox	adjustbox

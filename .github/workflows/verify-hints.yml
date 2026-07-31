@@ -1,0 +1,59 @@
+name: verify-hints
+
+# Re-check every "this command comes from this package" claim in src/symbols.inc
+# against a real TeX Live.
+#
+# This runs on its own schedule rather than as part of CI because it needs a
+# 4 GB distribution, and the ordinary build must never need one: the release
+# binaries are fully static and src/symbols.inc is committed precisely so that
+# building pplatex needs nothing but a compiler and PCRE2.
+#
+# A claim can rot without anything in this repository changing -- a package
+# moves a command into the kernel, or drops it -- so the check is scheduled
+# rather than only run on push.
+
+on:
+  schedule:
+    # Mondays, 05:00 UTC.
+    - cron: '0 5 * * 1'
+  pull_request:
+    paths:
+      - 'tools/**'
+      - 'src/symbols.inc'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    container: texlive/texlive:latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+
+      - name: Mine the distribution
+        run: tools/mine-cs.sh > cs-index.tsv
+
+      - name: Check every claim compiles as advertised
+        run: tools/verify-hints.sh tools/symbols.tsv cs-index.tsv | tee verify.out
+
+      - name: Confirm the committed table matches what verification allows
+        run: |
+          tools/gen-symbols.py --curated tools/symbols.tsv --mined cs-index.tsv \
+              --verified verify.out --source "$(tex --version | head -1)" \
+              > symbols.new
+          # The generated header records the distribution it came from, so
+          # compare the entries rather than the whole file.
+          grep '^    { "' src/symbols.inc > committed.txt
+          grep '^    { "' symbols.new    > current.txt
+          if ! diff -u committed.txt current.txt; then
+            echo
+            echo "src/symbols.inc no longer matches this TeX Live."
+            echo "Regenerate it and read the diff before committing:"
+            echo "  tools/mine-cs.sh > cs-index.tsv"
+            echo "  tools/verify-hints.sh tools/symbols.tsv cs-index.tsv > verify.out"
+            echo "  tools/gen-symbols.py --curated tools/symbols.tsv \\"
+            echo "      --mined cs-index.tsv --verified verify.out > src/symbols.inc"
+            exit 1
+          fi
