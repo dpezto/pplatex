@@ -189,8 +189,13 @@ parsed: VimTeX runs `pplatex -i <log> >tmp` and matches the classic layout
 column for column, so it has to stay put when something other than a person is
 reading it. Force either with `--format=pretty` or `--format=classic`.
 
-Grouping applies to both. `--no-collapse` turns it off and gives back exactly
-what v1.1.0 printed.
+Grouping applies to both, and so do hints: the classic layout carries them as
+indented continuation lines, which is the shape it has always used for the rest
+of a message, so an editor folds them into the same entry. Hints it is only
+guessing at -- the ones labelled `maybe:` -- are left out of that layout, since
+a list of things to go and fix is the wrong place for a guess.
+
+`--no-collapse` turns grouping off. It does not turn hints off.
 
 ## Development
 

@@ -1,5 +1,9 @@
 ** Warning in test.tex: No file test.aux.
+   likely: LaTeX creates test.aux on this run. If it is still missing after a
+           second run, the file really is absent.
 
 ** Error   in test.tex, Line 10: Missing $ inserted <inserted text>  $
+   likely: A math-only command was used in ordinary text. Wrap it in $...$,
+           or an earlier $ was never closed.
 
 Result: o) Errors: 1, Warnings: 1, BadBoxes: 0

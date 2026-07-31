@@ -671,12 +671,22 @@ void LatexOutputFilter::printItem(LatexOutputInfo& item)
 	default: break;
     }
 
+    Annotation hint;
+    bool hasHint = annotate(item, m_doc, hint);
+
     if ( m_pretty ) {
-	Annotation hint;
-	bool hasHint = annotate(item, m_doc, hint);
 	cout << renderPretty(item, m_renderOpts, hasHint ? &hint : 0);
     } else {
-	cout << item.getMessage();
+	// Guesses are left out of the classic layout. It is what editors read
+	// into a list of things to go and fix, and a line that only says
+	// "maybe" is not one of those -- it costs a jump to find out it was
+	// nothing. The readable layout still shows them, where the label is
+	// visible and the reader is already looking at the error.
+	bool worthSaying = hasHint && hint.confidence != CONF_GUESS;
+
+	cout << item.getMessage(worthSaying ? hint.label() : "",
+				worthSaying ? hint.first : "",
+				worthSaying ? hint.second : "");
     }
 }
 

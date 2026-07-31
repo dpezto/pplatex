@@ -2,8 +2,10 @@
    (Package biblatex) File 'error_colon.bbl' not created: run biber.
    See the biblatex package documentation for explanation.
    \printbibliography
+   hint: Run biber on this document, not bibtex, then LaTeX twice.
 
 ** Error   in ./error_colon.tex, Line 20: 
    (Class beamer) Overwriting theme: default is not allowed. \usetheme
+   hint: \usetheme was called more than once. Keep one, in the preamble.
 
 Result: o) Errors: 2, Warnings: 0, BadBoxes: 0

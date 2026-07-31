@@ -130,7 +130,9 @@ void LatexOutputInfo::addMessage(const string& msg, bool addSpace, bool headline
     }
 }
 
-string LatexOutputInfo::getMessage()
+string LatexOutputInfo::getMessage(const string& hintLabel,
+				  const string& hintFirst,
+				  const string& hintSecond)
 {
     ostringstream msg;
     bool hasType = true;
@@ -173,6 +175,14 @@ string LatexOutputInfo::getMessage()
 
     for (size_t i = 0; i < m_consequences.size(); i++) {
 	msg << "   caused: " << m_consequences[i] << endl;
+    }
+
+    if ( !hintLabel.empty() ) {
+	msg << "   " << hintLabel << ": " << hintFirst << endl;
+
+	if ( !hintSecond.empty() ) {
+	    msg << "   " << string(hintLabel.length() + 2, ' ') << hintSecond << endl;
+	}
     }
 
     msg << endl;

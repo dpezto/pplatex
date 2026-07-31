@@ -1,20 +1,31 @@
 ** Warning in /usr/share/texmf/tex/latex/pgf/basiclayer/pgfbaseimage.sty, Line 13: 
    (Package pgf) This package is obsolete and no longer needed on input line 13.
+   hint: Delete that \usepackage; pgf or tikz already provides it.
 
 ** Warning in /usr/share/texmf/tex/latex/beamer/base/beamer.cls: 
    (Package hyperref) Option `pdfpagelabels' is turned off because \thepage is undefined.
+   likely: hyperref could not read \thepage. Harmless unless you need PDF page
+           labels; load hyperref after anything that changes page numbering.
 
 ** Warning in /home/stefan/Documents/Uni/Vorlesungen/TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex, Line 49: 
    (Package hyperref) Token not allowed in a PDFDocEncoded string,
    removing `\new@ifnextchar' on input line 49.
+   hint: A command in a heading cannot go into a PDF bookmark. Wrap it:
+         \texorpdfstring{$x$}{x}.
 
 ** Warning in /home/stefan/Documents/Uni/Vorlesungen/TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex: 
    No file presentation.nav.
+   likely: LaTeX creates presentation.nav on this run. If it is still missing after a
+           second run, the file really is absent.
 
 ** BadBox  in /home/stefan/Documents/Uni/Vorlesungen/TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex, Line 204: 
    Overfull \hbox (2.84398pt too wide) in paragraph
+   likely: Text runs past the right margin. Reword it, allow a break with \-,
+           or load \usepackage{microtype}.
 
 ** Error   in /home/stefan/Documents/Uni/Vorlesungen/TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex, Line 292: 
    Undefined control sequence \Contradiction ->\blitza  \end{frame} (x2)
+   likely: \blitza is not defined and is not a command we know.
+           Check the spelling, or define it with \newcommand in the preamble.
 
 Result: o) Errors: 2, Warnings: 4, BadBoxes: 1
