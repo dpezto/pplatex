@@ -794,6 +794,7 @@ bool LatexOutputFilter::run(FILE *out)
 	m_nErrors = m_nWarnings = m_nBadBoxes = 0;
 	m_fileLineSource.clear();
 	m_nLastLineLength = 0;
+	m_rawLine.clear();
 	while (!m_stackFile.empty()) {
 	    m_stackFile.pop();
 	}
@@ -820,6 +821,13 @@ bool LatexOutputFilter::run(FILE *out)
 	    if ( m_verbose ) {
 		cerr << s;
 	    }
+
+	    // Keep the line as it arrived, minus the line ending. parseLine gets
+	    // a trimmed copy; the indent it throws away is what encodes the
+	    // column of a TeX error context.
+	    m_rawLine = s;
+	    size_t end = m_rawLine.find_last_not_of("\n\r");
+	    m_rawLine = (end == string::npos) ? "" : m_rawLine.substr(0, end+1);
 
 	    sCookie = parseLine(trim(s, false), sCookie);
 	    ++m_nOutputLines;

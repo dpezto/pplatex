@@ -36,8 +36,26 @@
 #endif
 
 #include "latexoutputfilter.h"
+#include "style.h"
 
 using namespace std;
+
+/**
+ * Match a "--name=value" option and hand back the value. Options that select
+ * between a fixed set of words take their value this way rather than as a
+ * separate argument, so that they can never be confused with a latex option.
+ */
+static bool optionValue(const string& arg, const char *name, string& value)
+{
+    string prefix = string(name) + "=";
+
+    if ( arg.length() <= prefix.length() || arg.compare(0, prefix.length(), prefix) != 0 ) {
+	return false;
+    }
+
+    value = arg.substr(prefix.length());
+    return true;
+}
 
 /**
  * Reduce argv[0] to the bare name pplatex was invoked as, so that the LaTeX
@@ -77,7 +95,13 @@ class ArgParser {
 	    version = false;
 	    quiet = false;
 	    nobadboxes = false;
-	    
+	    format = FORMAT_AUTO;
+	    color = COLOR_AUTO;
+	    charset = CHARSET_ASCII;
+	    paths = PATH_SHORT;
+	    width = 0;
+
+	    readEnvironment();
 	    parseArguments();
 	}
 
@@ -120,7 +144,27 @@ class ArgParser {
 	bool noBadBoxes() {
 	    return nobadboxes;
 	}
-	
+
+	FormatMode getFormat() {
+	    return format;
+	}
+
+	ColorMode getColor() {
+	    return color;
+	}
+
+	CharsetMode getCharset() {
+	    return charset;
+	}
+
+	PathMode getPaths() {
+	    return paths;
+	}
+
+	int getWidth() {
+	    return width;
+	}
+
     private:
 	int argc;
 	char** argv;
@@ -135,6 +179,32 @@ class ArgParser {
 	bool version;
 	bool quiet;
 	bool nobadboxes;
+	FormatMode format;
+	ColorMode color;
+	CharsetMode charset;
+	PathMode paths;
+	int width;
+
+	/**
+	 * Presentation defaults, for setting once in a shell profile. Command
+	 * line options are parsed afterwards and win.
+	 */
+	void readEnvironment() {
+	    const char *env;
+
+	    if ( (env = getenv("PPLATEX_FORMAT")) != 0 ) {
+		parseFormatMode(env, format);
+	    }
+	    if ( (env = getenv("PPLATEX_COLOR")) != 0 ) {
+		parseColorMode(env, color);
+	    }
+	}
+
+	/** Reject an option value we do not understand rather than guess. */
+	void badValue(const string& option, const string& value) {
+	    cerr << "Invalid value for '" << option << "': " << value << endl;
+	    exit(2);
+	}
 
 	void parseArguments() {
 
@@ -145,6 +215,8 @@ class ArgParser {
 	    int inputopt = 0;
 	    int quietopt = 0;
 	    int bbopt = 0;
+	    int formatopt = 0, coloropt = 0, charsetopt = 0, pathsopt = 0, widthopt = 0;
+	    string formatval, colorval, charsetval, pathsval, widthval;
 
 	    string name = programName(argv[0]);
 
@@ -190,6 +262,21 @@ class ArgParser {
 		else if ( !bbopt && (arg == "-b" || arg == "--nobadboxes" ) ) {
 		    bbopt = i;
 		}
+		else if ( !formatopt && optionValue(arg, "--format", formatval) ) {
+		    formatopt = i;
+		}
+		else if ( !coloropt && optionValue(arg, "--color", colorval) ) {
+		    coloropt = i;
+		}
+		else if ( !charsetopt && optionValue(arg, "--charset", charsetval) ) {
+		    charsetopt = i;
+		}
+		else if ( !pathsopt && optionValue(arg, "--paths", pathsval) ) {
+		    pathsopt = i;
+		}
+		else if ( !widthopt && optionValue(arg, "--width", widthval) ) {
+		    widthopt = i;
+		}
 	    }
 	    
 	    if (help || version) {
@@ -219,6 +306,25 @@ class ArgParser {
 	    }
 	    if ( bbopt && bbopt < options ) {
 		nobadboxes = true;
+	    }
+
+	    if ( formatopt && formatopt < options && !parseFormatMode(formatval, format) ) {
+		badValue("--format", formatval);
+	    }
+	    if ( coloropt && coloropt < options && !parseColorMode(colorval, color) ) {
+		badValue("--color", colorval);
+	    }
+	    if ( charsetopt && charsetopt < options && !parseCharsetMode(charsetval, charset) ) {
+		badValue("--charset", charsetval);
+	    }
+	    if ( pathsopt && pathsopt < options && !parsePathMode(pathsval, paths) ) {
+		badValue("--paths", pathsval);
+	    }
+	    if ( widthopt && widthopt < options ) {
+		width = atoi(widthval.c_str());
+		if ( width <= 0 ) {
+		    badValue("--width", widthval);
+		}
 	    }
 
 	    if ( inputopt && inputopt < options ) {
@@ -310,6 +416,17 @@ static void usage(char* program) {
     cout << "    -v                 Be verbosive" << endl;
     cout << "    -V, --version      Show version info" << endl;
     cout << "    -h, --help         Show this help" << endl;
+    cout << endl;
+    cout << "  output options:" << endl;
+    cout << "    --format=MODE      auto (default), pretty, classic" << endl;
+    cout << "    --color=MODE       auto (default), always, never" << endl;
+    cout << "    --charset=SET      ascii (default), unicode" << endl;
+    cout << "    --paths=MODE       short (default), full" << endl;
+    cout << "    --width=N          Wrap the readable output at N columns" << endl;
+    cout << endl;
+    cout << "  'auto' means the readable layout on a terminal and the classic one" << endl;
+    cout << "  everywhere else, so that redirected output stays machine readable." << endl;
+    cout << "  PPLATEX_FORMAT and PPLATEX_COLOR set the defaults." << endl;
     cout << endl;
     cout << "  By default, if the program is called 'pplatex', 'latex' will be executed," << endl;
     cout << "  if it is called 'ppluatex' then 'lualatex' will be executed," << endl;

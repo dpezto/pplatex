@@ -130,6 +130,17 @@ class LatexOutputFilter
 	/** Length of the previous line, to check if we need a space in the next line */
 	size_t m_nLastLineLength;
 
+	/**
+	The line currently being parsed, with its leading whitespace intact.
+
+	parseLine() is handed a trimmed line, because every detector matches
+	from the first non-blank character. TeX's error context, though, encodes
+	the column it stopped at as the indent of the continuation line -- it
+	pads that line out to the exact width of the line above. Trimming
+	destroys the only copy of that information, so keep the original here.
+	*/
+	std::string m_rawLine;
+
 	bool m_nobadboxes;
 	bool m_quiet;
 
