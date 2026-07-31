@@ -67,21 +67,7 @@ bool parseColorMode(const string& value, ColorMode& mode)
     return false;
 }
 
-bool parseCharsetMode(const string& value, CharsetMode& mode)
-{
-    if ( value == "ascii" )   { mode = CHARSET_ASCII;   return true; }
-    if ( value == "unicode" ) { mode = CHARSET_UNICODE; return true; }
-    return false;
-}
-
-bool parsePathMode(const string& value, PathMode& mode)
-{
-    if ( value == "short" ) { mode = PATH_SHORT; return true; }
-    if ( value == "full" )  { mode = PATH_FULL;  return true; }
-    return false;
-}
-
-bool isTerminal(FILE *stream)
+static bool isTerminal(FILE *stream)
 {
     return stream && isatty(fileno(stream));
 }

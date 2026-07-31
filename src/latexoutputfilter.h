@@ -63,13 +63,6 @@ class LatexOutputFilter
         bool run(FILE *out);
 
 	/**
-	Dump the structured item rather than rendering it. Undocumented option,
-	used to pin down what the parser understood without waiting for a
-	renderer to show it.
-	*/
-	void setDebugModel(bool debug) { m_debugModel = debug; }
-
-	/**
 	Render messages the readable way rather than the classic way, using
 	<opts> for the terminal it is writing to.
 	*/
@@ -80,13 +73,6 @@ class LatexOutputFilter
 	grouping them under the message that caused them.
 	*/
 	void setNoCollapse(bool off) { m_collapse = !off; }
-
-	/**
-	Print each message as it is parsed instead of at the end. Grouping needs
-	to see the whole log first, so this turns it off; it matters when pplatex
-	is running latex itself and the reader is watching.
-	*/
-	void setStream(bool stream) { m_stream = stream; }
 
 	/** Messages actually printed, which grouping makes fewer than the count. */
 	void getShownCount(int *errors, int *warnings, int *badboxes);
@@ -256,12 +242,10 @@ class LatexOutputFilter
 	std::vector<LatexOutputInfo> m_items;
 
 	bool m_collapse;
-	bool m_stream;
 
 	/** How many messages survived grouping, for the summary. */
 	int m_nShownErrors, m_nShownWarnings, m_nShownBadBoxes;
 
-	bool m_debugModel;
 	bool m_pretty;
 	RenderOpts m_renderOpts;
 

@@ -24,8 +24,6 @@
 
 enum FormatMode  { FORMAT_AUTO, FORMAT_PRETTY, FORMAT_CLASSIC };
 enum ColorMode   { COLOR_AUTO, COLOR_ALWAYS, COLOR_NEVER };
-enum CharsetMode { CHARSET_ASCII, CHARSET_UNICODE };
-enum PathMode    { PATH_SHORT, PATH_FULL };
 
 /**
  * Escape sequences the renderer writes, or empty strings when color is off.
@@ -52,11 +50,6 @@ const Palette& palette(bool color);
 /** Parse an option value. Returns false and leaves <mode> alone if unknown. */
 bool parseFormatMode(const std::string& value, FormatMode& mode);
 bool parseColorMode(const std::string& value, ColorMode& mode);
-bool parseCharsetMode(const std::string& value, CharsetMode& mode);
-bool parsePathMode(const std::string& value, PathMode& mode);
-
-/** True if <stream> is attached to a terminal. */
-bool isTerminal(FILE *stream);
 
 /** Resolve FORMAT_AUTO against <stream>. */
 bool wantPretty(FormatMode mode, FILE *stream);

@@ -172,15 +172,10 @@ Options:
 
 --format=MODE      auto (default), pretty, classic
 --color=MODE       auto (default), always, never
---charset=SET      ascii (default), unicode
---paths=MODE       short (default), full
 --width=N          Wrap the readable output at N columns
 --no-collapse      Report repeats and knock-on errors separately
---stream           Print messages as parsed, without grouping
 --self-test        Check the built-in hint tables and exit
 ```
-
-`PPLATEX_FORMAT` and `PPLATEX_COLOR` set the defaults for the first two.
 
 Do not pass an `-interaction` mode that stops to wait for input; pplatex uses
 `-interaction=nonstopmode` by default when none is given.

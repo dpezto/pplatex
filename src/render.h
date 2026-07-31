@@ -23,12 +23,10 @@
  */
 struct RenderOpts
 {
-	RenderOpts() : width(80), color(false), unicode(false), paths(PATH_SHORT) {}
+	RenderOpts() : width(80), color(false) {}
 
 	int width;
 	bool color;
-	bool unicode;
-	PathMode paths;
 };
 
 /**
@@ -48,7 +46,8 @@ std::string renderSummary(int errors, int warnings, int badboxes,
  * Make a path fit for reading: relative to the working directory where it can
  * be, under "~" or "<texmf>" where that is shorter, and with whole middle
  * components dropped only if it is still too wide. Never applied to the
- * classic output, which other programs match against.
+ * classic output, which other programs match against, so nothing that parses
+ * pplatex ever sees a shortened path.
  */
 std::string shortenPath(const std::string& path, const RenderOpts& opts);
 

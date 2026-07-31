@@ -129,7 +129,7 @@ static void underlineSpan(const TexContext& context, size_t& start, size_t& leng
 
 string shortenPath(const string& path, const RenderOpts& opts)
 {
-    if ( opts.paths == PATH_FULL || path.empty() ) {
+    if ( path.empty() ) {
 	return path;
     }
 
@@ -224,8 +224,8 @@ string renderPretty(const LatexOutputInfo& item, const RenderOpts& opts,
     string severityColor;
     string severity = severityLabel(item, pal, severityColor);
 
-    const char *vertical = opts.unicode ? "\xe2\x94\x82" : "|";
-    const char *arrow    = opts.unicode ? "\xe2\x94\x80\xe2\x96\xb6" : "-->";
+    const char *vertical = "|";
+    const char *arrow    = "-->";
 
     // "warning[hyperref]:" reads the way a compiler's error codes do, and puts
     // the package that is actually complaining in front of its message.

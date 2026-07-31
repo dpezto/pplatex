@@ -99,15 +99,10 @@ class ArgParser {
 	    nobadboxes = false;
 	    format = FORMAT_AUTO;
 	    color = COLOR_AUTO;
-	    charset = CHARSET_ASCII;
-	    paths = PATH_SHORT;
 	    width = 0;
-	    debugmodel = false;
 	    selftest = false;
 	    nocollapse = false;
-	    stream = false;
 
-	    readEnvironment();
 	    parseArguments();
 	}
 
@@ -159,20 +154,8 @@ class ArgParser {
 	    return color;
 	}
 
-	CharsetMode getCharset() {
-	    return charset;
-	}
-
-	PathMode getPaths() {
-	    return paths;
-	}
-
 	int getWidth() {
 	    return width;
-	}
-
-	bool debugModel() {
-	    return debugmodel;
 	}
 
 	bool selfTest() {
@@ -181,10 +164,6 @@ class ArgParser {
 
 	bool noCollapse() {
 	    return nocollapse;
-	}
-
-	bool streaming() {
-	    return stream;
 	}
 
     private:
@@ -203,28 +182,9 @@ class ArgParser {
 	bool nobadboxes;
 	FormatMode format;
 	ColorMode color;
-	CharsetMode charset;
-	PathMode paths;
 	int width;
-	bool debugmodel;
 	bool selftest;
 	bool nocollapse;
-	bool stream;
-
-	/**
-	 * Presentation defaults, for setting once in a shell profile. Command
-	 * line options are parsed afterwards and win.
-	 */
-	void readEnvironment() {
-	    const char *env;
-
-	    if ( (env = getenv("PPLATEX_FORMAT")) != 0 ) {
-		parseFormatMode(env, format);
-	    }
-	    if ( (env = getenv("PPLATEX_COLOR")) != 0 ) {
-		parseColorMode(env, color);
-	    }
-	}
 
 	/** Reject an option value we do not understand rather than guess. */
 	void badValue(const string& option, const string& value) {
@@ -241,9 +201,8 @@ class ArgParser {
 	    int inputopt = 0;
 	    int quietopt = 0;
 	    int bbopt = 0;
-	    int formatopt = 0, coloropt = 0, charsetopt = 0, pathsopt = 0, widthopt = 0;
-	    int debugopt = 0, collapseopt = 0, streamopt = 0;
-	    string formatval, colorval, charsetval, pathsval, widthval;
+	    int formatopt = 0, coloropt = 0, widthopt = 0, collapseopt = 0;
+	    string formatval, colorval, widthval;
 
 	    string name = programName(argv[0]);
 
@@ -295,24 +254,11 @@ class ArgParser {
 		else if ( !coloropt && optionValue(arg, "--color", colorval) ) {
 		    coloropt = i;
 		}
-		else if ( !charsetopt && optionValue(arg, "--charset", charsetval) ) {
-		    charsetopt = i;
-		}
-		else if ( !pathsopt && optionValue(arg, "--paths", pathsval) ) {
-		    pathsopt = i;
-		}
 		else if ( !widthopt && optionValue(arg, "--width", widthval) ) {
 		    widthopt = i;
 		}
-		// Undocumented: dump the parsed structure instead of rendering it.
-		else if ( !debugopt && arg == "--debug-model" ) {
-		    debugopt = i;
-		}
 		else if ( !collapseopt && arg == "--no-collapse" ) {
 		    collapseopt = i;
-		}
-		else if ( !streamopt && arg == "--stream" ) {
-		    streamopt = i;
 		}
 		else if ( options == 1 && arg == "--self-test" ) {
 		    selftest = true;
@@ -354,20 +300,8 @@ class ArgParser {
 	    if ( coloropt && coloropt < options && !parseColorMode(colorval, color) ) {
 		badValue("--color", colorval);
 	    }
-	    if ( charsetopt && charsetopt < options && !parseCharsetMode(charsetval, charset) ) {
-		badValue("--charset", charsetval);
-	    }
-	    if ( pathsopt && pathsopt < options && !parsePathMode(pathsval, paths) ) {
-		badValue("--paths", pathsval);
-	    }
-	    if ( debugopt && debugopt < options ) {
-		debugmodel = true;
-	    }
 	    if ( collapseopt && collapseopt < options ) {
 		nocollapse = true;
-	    }
-	    if ( streamopt && streamopt < options ) {
-		stream = true;
 	    }
 	    if ( widthopt && widthopt < options ) {
 		width = atoi(widthval.c_str());
@@ -469,16 +403,12 @@ static void usage(char* program) {
     cout << "  output options:" << endl;
     cout << "    --format=MODE      auto (default), pretty, classic" << endl;
     cout << "    --color=MODE       auto (default), always, never" << endl;
-    cout << "    --charset=SET      ascii (default), unicode" << endl;
-    cout << "    --paths=MODE       short (default), full" << endl;
     cout << "    --width=N          Wrap the readable output at N columns" << endl;
     cout << "    --self-test        Check the built-in hint tables and exit" << endl;
     cout << "    --no-collapse      Report repeats and knock-on errors separately" << endl;
-    cout << "    --stream           Print messages as parsed, without grouping" << endl;
     cout << endl;
     cout << "  'auto' means the readable layout on a terminal and the classic one" << endl;
     cout << "  everywhere else, so that redirected output stays machine readable." << endl;
-    cout << "  PPLATEX_FORMAT and PPLATEX_COLOR set the defaults." << endl;
     cout << endl;
     cout << "  By default, if the program is called 'pplatex', 'latex' will be executed," << endl;
     cout << "  if it is called 'ppluatex' then 'lualatex' will be executed," << endl;
@@ -575,13 +505,9 @@ int main(int argc, char** argv) {
     RenderOpts opts;
     opts.width   = terminalWidth(parser.getWidth(), stdout);
     opts.color   = wantColor(parser.getColor(), stdout);
-    opts.unicode = parser.getCharset() == CHARSET_UNICODE;
-    opts.paths   = parser.getPaths();
 
-    of.setDebugModel(parser.debugModel());
     of.setPretty(pretty, opts);
     of.setNoCollapse(parser.noCollapse());
-    of.setStream(parser.streaming());
 
     of.run(fp);
 

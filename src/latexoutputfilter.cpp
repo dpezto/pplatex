@@ -133,11 +133,9 @@ LatexOutputFilter::LatexOutputFilter(const string& source, int verbose, bool nob
     m_ctxHeadWidth(0),
     m_hasCtxHead(false),
     m_collapse(true),
-    m_stream(false),
     m_nShownErrors(0),
     m_nShownWarnings(0),
     m_nShownBadBoxes(0),
-    m_debugModel(false),
     m_pretty(false)
 {
     // TODO maybe use better method to handle also escaped chars in filename
@@ -697,55 +695,14 @@ void LatexOutputFilter::emitItem(const LatexOutputInfo& item, bool visible)
     m_hasPending = true;
 }
 
-/**
- * Print what the parser understood, one field per line. Strings are bracketed
- * because the interesting part of a context is often the whitespace.
- */
-static void debugDump(LatexOutputInfo& item)
-{
-    static const char *severity[] = { "none", "error", "warning", "badbox" };
-
-    int type = item.type();
-
-    cout << "item" << endl;
-    cout << "  severity  " << (type >= 0 && type <= 3 ? severity[type] : "?") << endl;
-    cout << "  file      " << item.source() << endl;
-    cout << "  line      " << item.sourceLine() << endl;
-    cout << "  column    " << item.sourceColumn() << endl;
-    cout << "  message   [" << item.message() << "]" << endl;
-
-    if ( item.hasSourceContext() ) {
-	const TexContext& context = item.sourceContext();
-	cout << "  context   tag=[" << context.tag << "] before=[" << context.before
-	     << "] after=[" << context.after << "] windowed="
-	     << (context.windowed ? 1 : 0) << endl;
-	cout << "  recovered [" << context.before << context.after << "]" << endl;
-    }
-
-    for (size_t i = 0; i < item.trace().size(); i++) {
-	const TexContext& frame = item.trace()[i];
-	cout << "  trace[" << i << "]  tag=[" << frame.tag << "] before=["
-	     << frame.before << "] after=[" << frame.after << "]" << endl;
-    }
-
-    cout << endl;
-}
-
 void LatexOutputFilter::releasePending()
 {
     if ( !m_hasPending ) {
 	return;
     }
 
-    if ( m_debugModel ) {
-	debugDump(m_pendingItem);
-    }
-    else if ( m_pendingVisible ) {
-	if ( m_stream ) {
-	    printItem(m_pendingItem);
-	} else {
-	    m_items.push_back(m_pendingItem);
-	}
+    if ( m_pendingVisible ) {
+	m_items.push_back(m_pendingItem);
     }
 
     m_pendingItem.clear();
@@ -1202,12 +1159,6 @@ bool LatexOutputFilter::run(FILE *out)
 
 	releasePending();
 	emitAll();
-
-	if ( m_debugModel ) {
-	    cout << "document" << endl;
-	    cout << "  classes   " << m_doc.loadedClasses.size() << endl;
-	    cout << "  packages  " << m_doc.loadedPackages.size() << endl;
-	}
 
 	return ret;
 }

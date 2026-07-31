@@ -58,7 +58,7 @@ HOME=/nonexistent
 export HOME
 
 # Fixed width and charset so the layout does not follow the terminal.
-prettyopts="--format=pretty --color=never --charset=ascii --width=100 --paths=short"
+prettyopts="--format=pretty --color=never --width=100"
 
 failed=0
 checked=0
