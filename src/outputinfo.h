@@ -173,8 +173,20 @@ class LatexOutputInfo
 	 **/
 	void clear();
 
-	/** The message as it is printed to the console, including a trailing blank line. */
-	std::string getMessage();
+	/**
+	 * The message as it is printed to the console, including a trailing
+	 * blank line.
+	 *
+	 * A hint, when given, is appended as indented continuation lines. That
+	 * is the shape the classic layout has always used for the rest of a
+	 * message, so an editor reading this output folds it into the same
+	 * entry rather than treating it as a new one. Passed in rather than
+	 * stored because working out what to advise needs the whole document,
+	 * which a single message does not have.
+	 **/
+	std::string getMessage(const std::string& hintLabel = "",
+			       const std::string& hintFirst = "",
+			       const std::string& hintSecond = "");
 
 	/**
 	 * Append a continuation line to the message.

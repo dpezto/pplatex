@@ -1,3 +1,5 @@
 ** Error   in ./min.tex, Line 3: Undefined control sequence.
+   likely: \zzz is not defined and is not a command we know.
+           Check the spelling, or define it with \newcommand in the preamble.
 
 Result: o) Errors: 1, Warnings: 0, BadBoxes: 0
