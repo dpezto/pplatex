@@ -385,12 +385,6 @@ void LatexOutputFilter::flushCurrentItem()
     //KILE_DEBUG() << "==LatexOutputFilter::flushCurrentItem()================" << endl;
     int nItemType = m_currentItem.type();
 
-    /* TODO why is this needed??
-    while( m_stackFile.size() > 0 && !fileExists(m_stackFile.top().file()) ) {
-	m_stackFile.pop();
-    }
-    */
-
     string sourceFile;
     if ( !m_fileLineSource.empty() ) {
 	// file:line:error named the file; trust it over the paren heuristic

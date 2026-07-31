@@ -43,10 +43,8 @@ public:
 	explicit LOFStackItem(const std::string& file = "", bool sure = false) : m_file(file), m_reliable(sure) {}
 
 	const std::string & file() const { return m_file; }
-	void setFile(const std::string & file) { m_file = file; }
 
 	bool reliable() const { return m_reliable; }
-	void setReliable(bool sure) { m_reliable = sure; }
 
 private:
 	std::string m_file;
@@ -148,7 +146,6 @@ class LatexOutputFilter
     public:
         /** Return number of errors etc. found in log-file. */
 	void getErrorCount(int *errors, int *warnings, int *badboxes);
-	void clearErrorCount() { m_nErrors=m_nWarnings=m_nBadBoxes=0 ; }
 
     protected:
 	short parseLine(const std::string & strLine, short dwCookie);
