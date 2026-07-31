@@ -29,6 +29,16 @@
 
 set -u
 
+# --kernel emits the commands the kernel defines, one per line, instead of the
+# package table. They are excluded from the table on purpose -- no package will
+# fix them -- but a spelling suggestion has to know they exist, or \superseteq
+# gets no answer when \supseteq is sitting right there in the kernel.
+kernel_only=false
+if [ "${1:-}" = "--kernel" ]; then
+    kernel_only=true
+    shift
+fi
+
 texmf=${1:-$(kpsewhich -var-value TEXMFDIST 2>/dev/null)}
 
 if [ -z "$texmf" ] || [ ! -d "$texmf" ]; then
@@ -61,7 +71,12 @@ kernel=$(mktemp)
 trap 'rm -f "$kernel"' EXIT INT TERM
 
 extract "$texmf"/tex/latex/base/*.ltx "$texmf"/tex/latex/base/*.sty |
-    sort -u > "$kernel"
+    grep -v '@' | sort -u > "$kernel"
+
+if $kernel_only; then
+    cat "$kernel"
+    exit 0
+fi
 
 echo "# tools/mine-cs.sh: $texmf" >&2
 echo "# kernel commands excluded: $(wc -l < "$kernel" | tr -d ' ')" >&2

@@ -3,11 +3,15 @@ error[biblatex]: File 'error_colon.bbl' not created: run biber
    |
 12 | \printbibliography
    | ^^^^^^^^^^^^^^^^^^
+   |
+   = hint: Run biber on this document, not bibtex, then LaTeX twice.
 
 error[beamer]: Overwriting theme: default is not allowed
   --> ./error_colon.tex:20:1
    |
 20 | \usetheme
    | ^^^^^^^^^
+   |
+   = hint: \usetheme was called more than once. Keep one, in the preamble.
 
 2 errors, 0 warnings, 0 badboxes

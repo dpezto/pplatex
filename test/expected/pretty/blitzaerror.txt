@@ -1,17 +1,31 @@
 warning[pgf]: This package is obsolete and no longer needed on input line 13
   --> <texmf>/tex/latex/pgf/basiclayer/pgfbaseimage.sty:13
+   |
+   = hint: Delete that \usepackage; pgf or tikz already provides it.
 
 warning[hyperref]: Option `pdfpagelabels' is turned off because \thepage is undefined
  --> <texmf>/tex/latex/beamer/base/beamer.cls
+  |
+  = likely: hyperref could not read \thepage. Harmless unless you need PDF page
+            labels; load hyperref after anything that changes page numbering.
 
 warning[hyperref]: Token not allowed in a PDFDocEncoded string, removing `\new@ifnextchar' on input line 49
   --> /home/.../TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex:49
+   |
+   = hint: A command in a heading cannot go into a PDF bookmark. Wrap it:
+           \texorpdfstring{$x$}{x}.
 
 warning: No file presentation.nav
  --> /home/.../TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex
+  |
+  = likely: LaTeX will create presentation.nav on this run. If it is still missing after a
+            second run, the file really is absent.
 
 badbox: Overfull \hbox (2.84398pt too wide) in paragraph
    --> /home/.../TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex:204
+    |
+    = likely: Text runs past the right margin. Reword it, allow a break with \-,
+              or load \usepackage{microtype}.
 
 error: Undefined control sequence
    --> /home/.../TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex:292:12
@@ -21,6 +35,8 @@ error: Undefined control sequence
     |
     = expanding: \Contradiction ->\blitza
                                   ^^^^^^^
+    = likely: \blitza is not defined and is not a command we know.
+              Check the spelling, or define it with \newcommand in the preamble.
 
 error: Undefined control sequence
    --> /home/.../TI Master/Distributed Algorithms for Wireless Networks/svn/tmp/ps/content.tex:312:12
@@ -30,5 +46,7 @@ error: Undefined control sequence
     |
     = expanding: \Contradiction ->\blitza
                                   ^^^^^^^
+    = likely: \blitza is not defined and is not a command we know.
+              Check the spelling, or define it with \newcommand in the preamble.
 
 2 errors, 4 warnings, 1 badbox

@@ -11,6 +11,7 @@
 
 #include <string>
 
+#include "knowledge.h"
 #include "outputinfo.h"
 #include "style.h"
 
@@ -35,7 +36,8 @@ struct RenderOpts
  * happened, and the line it happened on with the offending text underlined.
  * Ends with a blank line.
  */
-std::string renderPretty(const LatexOutputInfo& item, const RenderOpts& opts);
+std::string renderPretty(const LatexOutputInfo& item, const RenderOpts& opts,
+			 const Annotation *hint);
 
 /** The closing tally, e.g. "1 error, 2 warnings, 0 badboxes". */
 std::string renderSummary(int errors, int warnings, int badboxes, const RenderOpts& opts);

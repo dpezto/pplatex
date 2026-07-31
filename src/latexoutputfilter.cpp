@@ -616,7 +616,9 @@ void LatexOutputFilter::releasePending()
     }
     else if ( m_pendingVisible ) {
 	if ( m_pretty ) {
-	    cout << renderPretty(m_pendingItem, m_renderOpts);
+	    Annotation hint;
+	    bool hasHint = annotate(m_pendingItem, m_doc, hint);
+	    cout << renderPretty(m_pendingItem, m_renderOpts, hasHint ? &hint : 0);
 	} else {
 	    cout << m_pendingItem.getMessage();
 	}

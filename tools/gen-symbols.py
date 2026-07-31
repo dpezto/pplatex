@@ -61,6 +61,8 @@ def main():
                         help='claims scraped by tools/mine-cs.sh')
     parser.add_argument('--verified', required=True,
                         help='output of tools/verify-hints.sh')
+    parser.add_argument('--kernel', required=True,
+                        help='kernel commands, from tools/mine-cs.sh --kernel')
     parser.add_argument('--source', default='TeX Live',
                         help='distribution the claims were checked against')
     args = parser.parse_args()
@@ -117,7 +119,24 @@ def main():
         escaped = command.replace('\\', '\\\\')
         out.write(f'    {{ "{escaped}", {index[kept[command]]} }},'
                   f'  /* {kept[command]} */\n')
+    out.write('};\n\n')
+
+    # The kernel names carry no package, and exist only so that a spelling
+    # suggestion can reach them. Without these, \superseteq gets no answer,
+    # because the command it is a typo for is in the kernel and so is
+    # deliberately absent from the table above.
+    with open(args.kernel, encoding='utf-8') as handle:
+        kernel = sorted({line.strip() for line in handle
+                         if line.strip().startswith('\\')})
+
+    out.write('/* Commands the kernel provides. No package fixes these; they\n')
+    out.write(' * are here only so a misspelling can be matched against them. */\n')
+    out.write('static const char *const KERNEL_COMMANDS[] = {\n')
+    for command in kernel:
+        out.write(f'    "{command.replace(chr(92), chr(92)*2)}",\n')
     out.write('};\n')
+
+    print(f'{len(kernel)} kernel commands', file=sys.stderr)
 
     return 0
 

@@ -214,7 +214,8 @@ static string severityLabel(const LatexOutputInfo& item, const Palette& pal, str
     }
 }
 
-string renderPretty(const LatexOutputInfo& item, const RenderOpts& opts)
+string renderPretty(const LatexOutputInfo& item, const RenderOpts& opts,
+		    const Annotation *hint)
 {
     const Palette& pal = palette(opts.color);
 
@@ -316,6 +317,23 @@ string renderPretty(const LatexOutputInfo& item, const RenderOpts& opts)
 	if ( length > 0 ) {
 	    out << spaces(gutter+3) << spaces(label.length() + start) << severityColor
 		<< string(length, '^') << pal.reset << "\n";
+	}
+    }
+
+    // What to do about it. The label states how far the advice can be
+    // trusted, because some of it is a rule of the format and some of it is
+    // inferred from a table and from whatever the log happened to record.
+    if ( hint && !hint->empty() ) {
+	if ( !notes ) {
+	    out << bar << "\n";
+	}
+
+	string label = string(hint->label()) + ": ";
+
+	out << note << pal.bold << label << pal.reset << hint->first << "\n";
+
+	if ( !hint->second.empty() ) {
+	    out << spaces(gutter+3) << spaces(label.length()) << hint->second << "\n";
 	}
     }
 

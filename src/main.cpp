@@ -38,6 +38,7 @@
 #include "latexoutputfilter.h"
 #include "style.h"
 #include "render.h"
+#include "knowledge.h"
 
 using namespace std;
 
@@ -102,6 +103,7 @@ class ArgParser {
 	    paths = PATH_SHORT;
 	    width = 0;
 	    debugmodel = false;
+	    selftest = false;
 
 	    readEnvironment();
 	    parseArguments();
@@ -171,6 +173,10 @@ class ArgParser {
 	    return debugmodel;
 	}
 
+	bool selfTest() {
+	    return selftest;
+	}
+
     private:
 	int argc;
 	char** argv;
@@ -191,6 +197,7 @@ class ArgParser {
 	PathMode paths;
 	int width;
 	bool debugmodel;
+	bool selftest;
 
 	/**
 	 * Presentation defaults, for setting once in a shell profile. Command
@@ -289,9 +296,12 @@ class ArgParser {
 		else if ( !debugopt && arg == "--debug-model" ) {
 		    debugopt = i;
 		}
+		else if ( options == 1 && arg == "--self-test" ) {
+		    selftest = true;
+		}
 	    }
 
-	    if (help || version) {
+	    if (help || version || selftest) {
 		return;
 	    }
 
@@ -438,6 +448,7 @@ static void usage(char* program) {
     cout << "    --charset=SET      ascii (default), unicode" << endl;
     cout << "    --paths=MODE       short (default), full" << endl;
     cout << "    --width=N          Wrap the readable output at N columns" << endl;
+    cout << "    --self-test        Check the built-in hint tables and exit" << endl;
     cout << endl;
     cout << "  'auto' means the readable layout on a terminal and the classic one" << endl;
     cout << "  everywhere else, so that redirected output stays machine readable." << endl;
@@ -476,6 +487,10 @@ int main(int argc, char** argv) {
     if ( parser.showVersion() ) {
 	version();
 	return 0;
+    }
+
+    if ( parser.selfTest() ) {
+	return selfTestKnowledge() == 0 ? 0 : 1;
     }
 
     FILE *fp;

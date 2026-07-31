@@ -1,6 +1,6 @@
 
 add_executable(pplatex main.cpp regex.cpp outputinfo.cpp
-	               latexoutputfilter.cpp style.cpp render.cpp)
+	               latexoutputfilter.cpp style.cpp render.cpp knowledge.cpp)
 
 # main.cpp stringifies these for --version
 target_compile_definitions(pplatex PRIVATE
