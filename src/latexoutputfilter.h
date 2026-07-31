@@ -24,6 +24,7 @@
 
 #include <cstdio>
 #include <string>
+#include <set>
 #include <stack>
 
 /**
@@ -49,6 +50,29 @@ public:
 private:
 	std::string m_file;
 	bool m_reliable;
+};
+
+/**
+ * What the log says about the document as a whole, rather than about any one
+ * message: which packages and classes actually loaded.
+ *
+ * This is what keeps advice honest. The obvious hint for an undefined
+ * \superseteq is "add \usepackage{amssymb}", and in the log that error comes
+ * from, amssymb is already loaded -- so the obvious hint is wrong, and wrong
+ * in the way that costs the reader a compile to find out. Knowing what loaded
+ * is the difference between suggesting a package and suggesting the one thing
+ * that cannot be the answer.
+ */
+struct DocContext
+{
+	std::set<std::string> loadedPackages;
+	std::set<std::string> loadedClasses;
+
+	/** True if the document already loaded <name>, as a package or a class. */
+	bool loaded(const std::string& name) const {
+		return loadedPackages.find(name) != loadedPackages.end()
+		    || loadedClasses.find(name) != loadedClasses.end();
+	}
 };
 
 class LatexOutputFilter
@@ -111,6 +135,12 @@ class LatexOutputFilter
 	detectors build are unaffected either way.
 	*/
 	void observeContext();
+
+	/**
+	Note anything the line says about the document rather than about a
+	single message, such as a package finishing loading.
+	*/
+	void observeDocument(const std::string& strLine);
 
 	/** Hand a completed context to whichever item it belongs to. */
 	void storeContext(TexContext& context);
@@ -213,6 +243,9 @@ class LatexOutputFilter
 	TexContext m_ctxHead;
 	size_t m_ctxHeadWidth;
 	bool m_hasCtxHead;
+
+	/** What loaded, gathered over the whole log. */
+	DocContext m_doc;
 
 	bool m_debugModel;
 	bool m_pretty;

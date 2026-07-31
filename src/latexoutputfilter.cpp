@@ -506,6 +506,22 @@ void LatexOutputFilter::storeContext(TexContext& context)
 	}
 }
 
+void LatexOutputFilter::observeDocument(const string& strLine)
+{
+	// LaTeX announces each file it has finished reading. The name is the one
+	// the author would write in \usepackage, which is what advice has to be
+	// checked against.
+	static Regex rePackage("^Package: ([^ ]+)");
+	static Regex reClass("^Document Class: ([^ ]+)");
+
+	if ( rePackage.match(strLine) ) {
+		m_doc.loadedPackages.insert(rePackage.getMatch(strLine, 1));
+	}
+	else if ( reClass.match(strLine) ) {
+		m_doc.loadedClasses.insert(reClass.getMatch(strLine, 1));
+	}
+}
+
 void LatexOutputFilter::observeContext()
 {
 	if ( m_hasCtxHead ) {
@@ -956,6 +972,7 @@ short LatexOutputFilter::parseLine(const string & strLine, short dwCookie)
 	// Ahead of the detectors, because an "l.<n>" line is both the second half
 	// of a context block and the signal that ends the error it belongs to.
 	observeContext();
+	observeDocument(strLine);
 
 	switch (dwCookie) {
 		case Start :
@@ -1002,6 +1019,8 @@ bool LatexOutputFilter::run(FILE *out)
 	m_rawLine.clear();
 	m_hasCtxHead = false;
 	m_ctxHeadWidth = 0;
+	m_doc.loadedPackages.clear();
+	m_doc.loadedClasses.clear();
 	while (!m_stackFile.empty()) {
 	    m_stackFile.pop();
 	}
@@ -1054,6 +1073,12 @@ bool LatexOutputFilter::run(FILE *out)
 	}
 
 	releasePending();
+
+	if ( m_debugModel ) {
+	    cout << "document" << endl;
+	    cout << "  classes   " << m_doc.loadedClasses.size() << endl;
+	    cout << "  packages  " << m_doc.loadedPackages.size() << endl;
+	}
 
 	return ret;
 }
