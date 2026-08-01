@@ -204,6 +204,10 @@ a list of things to go and fix is the wrong place for a guess.
 
 ## Development
 
+pplatex is feature-complete and in maintenance: bug fixes, parser fixes for
+logs it mishandles, and hint-table corrections are welcome; new features are
+out of scope.
+
 The parser is a heuristic over an unspecified format, so behavior is pinned by
 fixtures: `test/run.sh` feeds every log in `test/` through the binary and
 diffs against the expected output committed in `test/expected/`.
