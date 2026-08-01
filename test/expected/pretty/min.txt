@@ -3,7 +3,6 @@ error: Undefined control sequence
   |
 3 | \zzz{aa}
   | ^^^^
-  |
   = likely: \zzz is not defined and is not a command we know.
             Check the spelling, or define it with \newcommand in the preamble.
 

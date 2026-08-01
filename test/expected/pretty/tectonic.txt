@@ -1,12 +1,10 @@
 warning: No file test.aux
  --> test.tex
-  |
   = likely: LaTeX creates test.aux on this run. If it is still missing after a
             second run, the file really is absent.
 
 error: Missing $ inserted
   --> test.tex:10
-   |
    = expanding: <inserted text>
    = likely: A math-only command was used in ordinary text. Wrap it in $...$,
              or an earlier $ was never closed.

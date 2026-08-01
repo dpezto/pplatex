@@ -301,7 +301,6 @@ string renderPretty(const LatexOutputInfo& item, const RenderOpts& opts,
     // how it appears in the log everyone already knows how to read. Detail
     // lines hang off an '=' with no bar, the way a compiler note does.
     string note = spaces(gutter+1) + pal.rule + "=" + pal.reset + " ";
-    bool notes = false;
 
     for (size_t i = 0; i < item.trace().size(); i++) {
 	const TexContext& frame = item.trace()[i];
@@ -309,11 +308,6 @@ string renderPretty(const LatexOutputInfo& item, const RenderOpts& opts,
 
 	if ( text.empty() ) {
 	    continue;
-	}
-
-	if ( !notes ) {
-	    out << bar << "\n";
-	    notes = true;
 	}
 
 	string label = (i == 0) ? "expanding: " : "           ";
@@ -331,11 +325,6 @@ string renderPretty(const LatexOutputInfo& item, const RenderOpts& opts,
     // The other places the same thing happened. Collapsing them away without
     // saying where they were would lose the only thing that told them apart.
     if ( !item.otherLines().empty() ) {
-	if ( !notes ) {
-	    out << bar << "\n";
-	    notes = true;
-	}
-
 	ostringstream lines;
 	lines << "also at line" << (item.otherLines().size() > 1 ? "s " : " ");
 
@@ -354,11 +343,6 @@ string renderPretty(const LatexOutputInfo& item, const RenderOpts& opts,
     // who saw them in the raw log needs to know where they went, but shown
     // here rather than on their own, because this is the one to fix.
     if ( !item.consequences().empty() ) {
-	if ( !notes ) {
-	    out << bar << "\n";
-	    notes = true;
-	}
-
 	string label = "caused: ";
 	for (size_t i = 0; i < item.consequences().size(); i++) {
 	    if ( i == 0 ) {
@@ -376,10 +360,6 @@ string renderPretty(const LatexOutputInfo& item, const RenderOpts& opts,
     // trusted, because some of it is a rule of the format and some of it is
     // inferred from a table and from whatever the log happened to record.
     if ( hint && !hint->empty() ) {
-	if ( !notes ) {
-	    out << bar << "\n";
-	}
-
 	string label = string(hint->label()) + ": ";
 
 	out << note << pal.bold << label << pal.reset << hint->first << "\n";
