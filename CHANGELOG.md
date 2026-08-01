@@ -1,5 +1,19 @@
 # Changelog
 
+## [1.3.0](https://github.com/dpezto/pplatex/compare/v1.2.0...v1.3.0) (2026-08-01)
+
+
+### Features
+
+* **hints:** carry advice into the classic layout ([fa2afa1](https://github.com/dpezto/pplatex/commit/fa2afa13225e30593ac2d9cf73364db681079792))
+* **hints:** carry advice into the classic layout ([a50f7cd](https://github.com/dpezto/pplatex/commit/a50f7cd032500c0d1ce2f4833eb5c11aa7283e12))
+
+
+### Bug Fixes
+
+* **render:** drop the rule between the source line and the notes below it ([8a7a621](https://github.com/dpezto/pplatex/commit/8a7a6211fdbc36672f5d2a6cbbecca5fa6f6dd4c))
+* **render:** drop the rule between the source line and the notes below it ([e866920](https://github.com/dpezto/pplatex/commit/e866920ca62ed5dbf56cdc67d002d002f5f79724))
+
 ## [1.2.0](https://github.com/dpezto/pplatex/compare/v1.1.0...v1.2.0) (2026-07-31)
 
 

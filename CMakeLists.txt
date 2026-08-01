@@ -32,7 +32,7 @@ cmake_minimum_required(VERSION 3.20)
 # Main project name. PPLATEX_VERSION is the release string reported by
 # --version; release-please rewrites the annotated line on every release.
 project(pplatex VERSION 1.0)
-set(PPLATEX_VERSION "1.2.0") # x-release-please-version
+set(PPLATEX_VERSION "1.3.0") # x-release-please-version
 
 # Find PCRE2 via its POSIX compatibility layer. pkg-config is the only
 # discovery mechanism PCRE2 ships, so fall back to a manual search for
